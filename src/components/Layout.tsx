@@ -2,18 +2,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { memo } from "react";
+import { useAuth } from "../context/AuthContext";
 
 const navItems = [
   { href: "/", label: "Beranda" },
   { href: "/monitoring", label: "Monitoring" },
   { href: "/dataset", label: "Dataset & Sensor" },
+  { href: "/transactions", label: "Transaksi" },
   { href: "/signin", label: "Masuk" },
-  { href: "/signup", label: "Daftar" },
-  { href: "/blockchain", label: "MetaMask" },
 ];
 
 function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { authenticationStatus, user, logout } = useAuth();
+  const isAuthenticated = authenticationStatus === "authenticated";
 
   return (
     <div className="min-h-screen">
@@ -38,6 +40,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           <nav className="flex items-center gap-1">
             {navItems.map((item) => {
+              // Hide login if already authenticated
+              if (isAuthenticated && item.href === "/signin") return null;
+              
+              // Hide Monitoring and Transaksi for Guest (unauthenticated)
+              if (!isAuthenticated && (item.href === "/monitoring" || item.href === "/transactions")) return null;
+              
               const isActive = router.pathname === item.href;
               return (
                 <Link
@@ -55,6 +63,25 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            
+            {isAuthenticated && (
+              <div className="flex items-center gap-3 ml-4 border-l pl-4 border-[var(--border-soft)]">
+                <div className="flex flex-col items-end">
+                  <span className="text-xs font-semibold" style={{ color: "var(--section-title)" }}>
+                    {user?.role === "admin" ? "Admin" : "User"}
+                  </span>
+                  <span className="text-[10px]" style={{ color: "var(--muted)" }}>
+                    {user?.wallet_address ? `${user.wallet_address.slice(0,6)}...${user.wallet_address.slice(-4)}` : ""}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </nav>
         </div>
       </header>

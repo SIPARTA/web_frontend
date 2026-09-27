@@ -47,8 +47,6 @@ export default function App({ Component, pageProps }: AppProps) {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
 
-  const needsWeb3 = WEB3_ROUTES.has(router.pathname);
-
   const content = (
     <>
       <button type="button" onClick={toggleTheme} className="theme-toggle">
@@ -61,9 +59,5 @@ export default function App({ Component, pageProps }: AppProps) {
     </>
   );
 
-  if (needsWeb3) {
-    return <Web3Provider>{content}</Web3Provider>;
-  }
-
-  return content;
+  return <Web3Provider>{content}</Web3Provider>;
 }
