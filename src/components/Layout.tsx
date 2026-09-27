@@ -43,6 +43,9 @@ function Layout({ children }: { children: React.ReactNode }) {
               // Hide login if already authenticated
               if (isAuthenticated && item.href === "/signin") return null;
               
+              // Hide Monitoring and Transaksi for Guest (unauthenticated)
+              if (!isAuthenticated && (item.href === "/monitoring" || item.href === "/transactions")) return null;
+              
               const isActive = router.pathname === item.href;
               return (
                 <Link

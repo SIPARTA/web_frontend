@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { ethers } from "ethers";
+import jwt from "jsonwebtoken";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -54,8 +55,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Kosongkan nonce agar tidak bisa dipakai ulang (prevent replay attack)
     await supabase.from("users").update({ nonce: null }).eq("wallet_address", address);
 
+    const token = jwt.sign(
+      { address: user.wallet_address, role: user.role, id: user.id },
+      process.env.JWT_SECRET || "siparta-fallback-secret-2026",
+      { expiresIn: "1d" }
+    );
+
+    res.setHeader("Set-Cookie", `siparta_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict`);
+
     // Kirim balik data user yang valid sebagai session
-    // Bisa tambahkan JWT di sini jika diperlukan, untuk sekarang return data user
     return res.status(200).json({ success: true, user });
   } catch (err: any) {
     console.error("[API/auth/verify] Error:", err);

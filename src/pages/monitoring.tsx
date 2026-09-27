@@ -10,6 +10,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useAuth } from "../context/AuthContext";
+import { getAuthenticatedUser } from "../lib/auth";
+import type { GetServerSideProps } from "next";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -18,6 +22,15 @@ interface SensorData {
   tgs2600?: number;
   mq2?: number;
   mq135?: number;
+}
+
+interface IncidentEventMedia {
+  id: string;
+  source: string;
+  capture_status: string;
+  image_reference: string;
+  timestamp: string;
+  iot_devices?: { name: string } | null;
 }
 
 interface IncidentEvent {
@@ -31,6 +44,7 @@ interface IncidentEvent {
   is_anchored: boolean;
   iot_devices?: { name: string } | null;
   audit_log?: { ipfs_cid: string; action: string }[] | { ipfs_cid: string; action: string } | null;
+  incident_event_media?: IncidentEventMedia[] | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -146,10 +160,10 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
         <span className="font-semibold">Device: {incident.iot_devices?.name || "Offline Sensor"}</span>
         {incident.audit_log && (
           <span className="flex gap-1 items-center">
-            CID: 
-            <a 
+            CID:
+            <a
               href={`https://ipfs.io/ipfs/${Array.isArray(incident.audit_log) ? incident.audit_log[0]?.ipfs_cid : (incident.audit_log as any).ipfs_cid}`}
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 hover:underline font-mono"
             >
@@ -174,11 +188,35 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
         })}
       </div>
 
+      {/* Media / Dokumentasi TKP */}
+      {incident.incident_event_media && incident.incident_event_media.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+            📸 DOKUMENTASI TKP — MOBILE CAMERA
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {incident.incident_event_media.map((media) => (
+              <div key={media.id} className="relative h-24 w-32 shrink-0 rounded-md overflow-hidden border border-gray-600/30">
+                <img
+                  src={media.image_reference}
+                  alt="TKP Documentation"
+                  className="object-cover w-full h-full"
+                />
+                <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[8px] text-white">
+                  {formatTime(media.timestamp)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
       {/* AI Analysis (collapsible) */}
       {incident.ai_analysis_text && (
         <div className="mt-3 rounded-md border border-dashed px-3 py-2 text-xs leading-5" style={{ backgroundColor: "var(--surface-soft)", borderColor: "var(--border-soft)" }}>
           <p style={{ color: "var(--section-title)" }}>
-            <strong>AI Keselamatan SIPARTA:</strong><br/>
+            <strong>AI Keselamatan SIPARTA:</strong><br />
             <span style={{ color: "var(--muted)" }}>{incident.ai_analysis_text}</span>
           </p>
           <p className="mt-2 text-[10px] italic" style={{ color: "var(--danger)" }}>
@@ -196,18 +234,45 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const user = getAuthenticatedUser(context.req as any);
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/signin",
+        permanent: false,
+      },
+    };
+  }
+  return { props: {} };
+};
+
 export default function MonitoringPage() {
+  const { authenticationStatus } = useAuth();
   const [incidents, setIncidents] = useState<IncidentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const [devices, setDevices] = useState<{id: string, name: string, is_active: boolean, last_seen: string | null}[]>([]);
+  const [devices, setDevices] = useState<{ id: string, name: string, is_active: boolean, last_seen: string | null }[]>([]);
   const [filter, setFilter] = useState<"ALL" | "BAHAYA" | "WASPADA" | "AMAN">("ALL");
+  const [dataSource, setDataSource] = useState<"all" | "iot" | "droidcam">("all");
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (authenticationStatus === "unauthenticated") {
+      router.push("/signin");
+    }
+  }, [authenticationStatus, router]);
 
   // Fetch data dari Supabase via backend API
   const fetchIncidents = useCallback(async () => {
+    if (authenticationStatus !== "authenticated") {
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await fetch("/api/monitoring/incidents");
+      const res = await fetch(`/api/monitoring/incidents?source=${dataSource}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: IncidentEvent[] = await res.json();
       setIncidents(data);
@@ -217,16 +282,16 @@ export default function MonitoringPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authenticationStatus, dataSource]);
 
   // Subscribe ke Supabase Realtime via server-side hook
   useEffect(() => {
     fetchIncidents();
-    
+
     // Fungsi untuk cek status koneksi perangkat IoT aktual
     const checkDeviceStatus = async () => {
       try {
-        const res = await fetch("/api/monitoring/status");
+        const res = await fetch(`/api/monitoring/status?source=${dataSource}`);
         if (res.ok) {
           const data = await res.json();
           setConnected(data.online);
@@ -240,7 +305,7 @@ export default function MonitoringPage() {
         setDevices([]);
       }
     };
-    
+
     checkDeviceStatus();
 
     // Polling fallback setiap 10 detik (jika Realtime belum dikonfigurasi)
@@ -253,9 +318,29 @@ export default function MonitoringPage() {
       clearInterval(interval);
       setConnected(false);
     };
-  }, [fetchIncidents]);
+  }, [fetchIncidents, dataSource]);
 
   const filtered = filter === "ALL" ? incidents : incidents.filter((e) => e.severity === filter);
+
+  if (authenticationStatus === "initializing" || authenticationStatus === "authenticating") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-sm" style={{ color: "var(--muted)" }}>Memeriksa status autentikasi...</p>
+      </div>
+    );
+  }
+
+  if (authenticationStatus === "unauthenticated") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>Akses Ditolak</h2>
+        <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
+          Fitur Monitoring membutuhkan autentikasi MetaMask. Silakan login terlebih dahulu untuk mengakses data real-time.
+        </p>
+        <Link href="/signin" className="btn-primary">Login MetaMask</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -300,7 +385,7 @@ export default function MonitoringPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
-                  <span>ID: {dev.id.substring(0,8)}...</span>
+                  <span>ID: {dev.id.substring(0, 8)}...</span>
                   <span>Seen: {dev.last_seen ? formatTime(dev.last_seen) : 'Never'}</span>
                 </div>
               </div>
@@ -309,21 +394,36 @@ export default function MonitoringPage() {
         </section>
       )}
 
-      {/* Filter */}
-      <div className="flex flex-wrap gap-2">
-        {(["ALL", "BAHAYA", "WASPADA", "AMAN"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${
-              filter === f
-                ? "border-transparent bg-[var(--nav-active-bg)] text-[var(--nav-active-text)]"
-                : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
-            }`}
-          >
-            {f === "ALL" ? "Semua" : f.charAt(0) + f.slice(1).toLowerCase()}
-          </button>
-        ))}
+      {/* Filter and Source Switcher */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        <div className="flex flex-wrap gap-2">
+          {(["ALL", "BAHAYA", "WASPADA", "AMAN"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${filter === f
+                  ? "border-transparent bg-[var(--nav-active-bg)] text-[var(--nav-active-text)]"
+                  : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
+                }`}
+            >
+              {f === "ALL" ? "Semua" : f.charAt(0) + f.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["all", "iot", "droidcam"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setDataSource(s)}
+              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${dataSource === s
+                  ? "border-transparent bg-indigo-500/20 text-indigo-400"
+                  : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
+                }`}
+            >
+              {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : "DroidCam (Testing)"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* List */}

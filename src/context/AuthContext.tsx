@@ -35,11 +35,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [account]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     localStorage.removeItem("siparta_web3_user");
     setAuthenticationStatus("unauthenticated");
     setDatabaseSyncStatus("unsynchronized");
     setUser(null);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout failed:", e);
+    }
   }, []);
 
   const login = useCallback(async () => {

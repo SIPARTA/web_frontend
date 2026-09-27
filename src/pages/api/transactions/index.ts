@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "../../../lib/auth";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -9,7 +10,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { address } = req.query;
+  const authUser = getAuthenticatedUser(req);
+  if (!authUser) {
+    return res.status(401).json({ error: "Unauthorized. Please authenticate with MetaMask." });
+  }
+
+  const userRole = authUser.role;
+  const userId = authUser.id;
+  const address = authUser.address;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(500).json({ error: "Supabase configuration missing" });
@@ -17,23 +25,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Get user to check role
-    let userRole = null;
-    let userId = null;
-    
-    if (address && typeof address === "string") {
-      const { data: user } = await supabase
-        .from("users")
-        .select("id, role")
-        .eq("wallet_address", address)
-        .single();
-        
-      if (user) {
-        userRole = user.role;
-        userId = user.id;
-      }
-    }
 
     // Base query for transaction_logs
     let query = supabase
@@ -123,6 +114,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(finalData);
   } catch (err: any) {
     console.error("[API/transactions] Unexpected error:", err);
-    return res.status(500).json({ error: "Internal server error", message: err?.message, stack: err?.stack });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

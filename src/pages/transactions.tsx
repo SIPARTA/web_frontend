@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
+import { getAuthenticatedUser } from "../lib/auth";
+import type { GetServerSideProps } from "next";
 
 interface TransactionDetail {
   type: string;
@@ -33,11 +36,32 @@ function formatDate(iso: string) {
   });
 }
 
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const user = getAuthenticatedUser(context.req as any);
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/signin",
+        permanent: false,
+      },
+    };
+  }
+  return { props: {} };
+};
+
 export default function TransactionsPage() {
   const { user, authenticationStatus } = useAuth();
   const [transactions, setTransactions] = useState<TransactionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const router = useRouter();
+
+  useEffect(() => {
+    if (authenticationStatus === "unauthenticated") {
+      router.push("/signin");
+    }
+  }, [authenticationStatus, router]);
 
   const fetchTransactions = useCallback(async () => {
     if (authenticationStatus !== "authenticated") {
@@ -70,12 +94,22 @@ export default function TransactionsPage() {
     return () => clearInterval(interval);
   }, [fetchTransactions]);
 
+  if (authenticationStatus === "initializing" || authenticationStatus === "authenticating") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-sm" style={{ color: "var(--muted)" }}>Memeriksa status autentikasi...</p>
+      </div>
+    );
+  }
+
   if (authenticationStatus === "unauthenticated") {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>Akses Ditolak</h2>
-        <p className="mb-6 text-sm" style={{ color: "var(--muted)" }}>Anda harus terhubung dengan dompet (MetaMask) untuk melihat histori transaksi.</p>
-        <Link href="/signin" className="btn-primary">Hubungkan Wallet</Link>
+        <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
+          Fitur Transaksi membutuhkan autentikasi MetaMask. Silakan login terlebih dahulu untuk mengakses histori transaksi.
+        </p>
+        <Link href="/signin" className="btn-primary">Login MetaMask</Link>
       </div>
     );
   }
