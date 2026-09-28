@@ -53,7 +53,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const payload: Record<string, unknown> = {
     incident_type,
     severity: severity.toUpperCase(),
-    sensor_data: sensors,
     timestamp,
     is_anchored: false,
   };
