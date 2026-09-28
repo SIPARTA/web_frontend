@@ -15,7 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { getAuthenticatedUser } from "../lib/auth";
 import type { GetServerSideProps } from "next";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────
 
 interface SensorData {
   mics5524?: number;
@@ -46,6 +46,29 @@ interface IncidentEvent {
   audit_log?: { ipfs_cid: string; action: string }[] | { ipfs_cid: string; action: string } | null;
   incident_event_media?: IncidentEventMedia[] | null;
 }
+
+interface UnsavedData {
+  id: string;
+  device_id: string;
+  sensor_data: SensorData;
+  severity: "AMAN" | "WASPADA" | "BAHAYA";
+  timestamp: string;
+  source: string;
+  isSaving: boolean;
+}
+
+interface GeminiSafetyResponse {
+  gas_terdeteksi: string;
+  status_risiko: string;
+  ringkasan_bahaya: string;
+  langkah_mitigasi: string[];
+  pertolongan_pertama: string[];
+  hal_dihindari: string[];
+  kapan_tinggalkan_area: string;
+  kapan_hubungi_darurat: string;
+  catatan_ketidakpastian: string | null;
+}
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -136,9 +159,17 @@ function StatsBar({ incidents }: { incidents: IncidentEvent[] }) {
 
 // ─── Incident Card ────────────────────────────────────────────────────────────
 
-function IncidentCard({ incident }: { incident: IncidentEvent }) {
+function IncidentCard({ incident, onDelete, isDeleting, onRequestAI, aiResult, aiLoading }: {
+  incident: IncidentEvent,
+  onDelete?: (id: string) => void,
+  isDeleting?: boolean,
+  onRequestAI?: (incident: IncidentEvent) => void,
+  aiResult?: GeminiSafetyResponse | null,
+  aiLoading?: boolean,
+}) {
   const cfg = SEVERITY_CONFIG[incident.severity] ?? SEVERITY_CONFIG["AMAN"];
   const sensors = incident.sensor_data ?? {};
+  const [showAI, setShowAI] = useState(false);
 
   return (
     <div className={`rounded-lg border p-4 transition-all ${cfg.cls}`}>
@@ -152,6 +183,20 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
         <div className="flex items-center gap-2">
           <AnchorBadge anchored={incident.is_anchored} />
           <span className={cfg.badgeCls}>{cfg.label}</span>
+          {onDelete && (
+            <button
+              onClick={() => {
+                if (window.confirm("Apakah Anda yakin ingin menghapus data ini dari database Supabase?")) {
+                  onDelete(incident.id);
+                }
+              }}
+              disabled={isDeleting}
+              className="ml-1 flex items-center justify-center rounded p-1 hover:bg-red-500/20 text-red-500 transition-colors disabled:opacity-50"
+              title="Hapus Record"
+            >
+              {isDeleting ? "⏳" : "🗑️"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -162,12 +207,12 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
           <span className="flex gap-1 items-center">
             CID:
             <a
-              href={`https://ipfs.io/ipfs/${Array.isArray(incident.audit_log) ? incident.audit_log[0]?.ipfs_cid : (incident.audit_log as any).ipfs_cid}`}
+              href={`https://ipfs.io/ipfs/${Array.isArray(incident.audit_log) ? incident.audit_log[0]?.ipfs_cid : (incident.audit_log as { ipfs_cid?: string })?.ipfs_cid}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 hover:underline font-mono"
             >
-              {Array.isArray(incident.audit_log) ? incident.audit_log[0]?.ipfs_cid?.substring(0, 12) : (incident.audit_log as any).ipfs_cid?.substring(0, 12)}...
+              {Array.isArray(incident.audit_log) ? incident.audit_log[0]?.ipfs_cid?.substring(0, 12) : (incident.audit_log as { ipfs_cid?: string })?.ipfs_cid?.substring(0, 12)}...
             </a>
           </span>
         )}
@@ -197,6 +242,7 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
           <div className="flex gap-2 overflow-x-auto pb-2">
             {incident.incident_event_media.map((media) => (
               <div key={media.id} className="relative h-24 w-32 shrink-0 rounded-md overflow-hidden border border-gray-600/30">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={media.image_reference}
                   alt="TKP Documentation"
@@ -211,8 +257,7 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
         </div>
       )}
 
-
-      {/* AI Analysis (collapsible) */}
+      {/* AI Analysis from DB (saved during pipeline) */}
       {incident.ai_analysis_text && (
         <div className="mt-3 rounded-md border border-dashed px-3 py-2 text-xs leading-5" style={{ backgroundColor: "var(--surface-soft)", borderColor: "var(--border-soft)" }}>
           <p style={{ color: "var(--section-title)" }}>
@@ -225,6 +270,95 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
         </div>
       )}
 
+      {/* Gemini AI Safety Button & Panel */}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={() => {
+            if (!aiResult && onRequestAI) {
+              onRequestAI(incident);
+            }
+            setShowAI(!showAI);
+          }}
+          disabled={aiLoading}
+          className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] font-semibold transition-colors hover:bg-teal-500/10"
+          style={{ borderColor: "var(--border-soft)", color: "var(--teal-600, #0d9488)" }}
+        >
+          {aiLoading ? (
+            <><span className="animate-spin">⏳</span> Menganalisis...</>
+          ) : (
+            <><span>🤖</span> {showAI ? "Tutup Analisis AI" : "Analisis Keselamatan AI"}</>
+          )}
+        </button>
+      </div>
+
+      {/* AI Safety Response Panel */}
+      {showAI && aiResult && (
+        <div className="mt-3 rounded-lg border p-4 text-xs leading-relaxed space-y-3" style={{ backgroundColor: "var(--surface-soft)", borderColor: "var(--border-soft)" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🤖</span>
+            <span className="font-bold text-sm" style={{ color: "var(--section-title)" }}>Analisis Keselamatan AI</span>
+            <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ${
+              aiResult.status_risiko === "BAHAYA" ? "bg-red-500/20 text-red-600" :
+              aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
+              "bg-green-500/20 text-green-600"
+            }`}>{aiResult.status_risiko}</span>
+          </div>
+
+          <div className="rounded-md p-2" style={{ background: "var(--bg-default)" }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>Gas Terdeteksi</p>
+            <p className="font-semibold" style={{ color: "var(--section-title)" }}>{aiResult.gas_terdeteksi}</p>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>Ringkasan Bahaya</p>
+            <p style={{ color: "var(--foreground)" }}>{aiResult.ringkasan_bahaya}</p>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-orange-500">⚡ Langkah Mitigasi Segera</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.langkah_mitigasi.map((step, i) => <li key={i}>{step}</li>)}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-blue-500">🩹 Pertolongan Pertama</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.pertolongan_pertama.map((step, i) => <li key={i}>{step}</li>)}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-red-500">🚫 Hal yang Harus Dihindari</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.hal_dihindari.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-md p-2 border border-red-500/20 bg-red-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-red-500">🚪 Tinggalkan Area</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.kapan_tinggalkan_area}</p>
+            </div>
+            <div className="rounded-md p-2 border border-orange-500/20 bg-orange-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-orange-500">📞 Hubungi Darurat</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.kapan_hubungi_darurat}</p>
+            </div>
+          </div>
+
+          {aiResult.catatan_ketidakpastian && (
+            <div className="rounded-md p-2 border border-yellow-500/20 bg-yellow-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-yellow-600">⚠️ Catatan Ketidakpastian</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.catatan_ketidakpastian}</p>
+            </div>
+          )}
+
+          <p className="text-[9px] italic pt-1 border-t" style={{ color: "var(--danger)", borderColor: "var(--border-soft)" }}>
+            *Rekomendasi AI adalah panduan pendukung edukasi keselamatan. Selalu utamakan penilaian situasi aktual, protokol keselamatan resmi, dan arahan petugas yang kompeten.
+          </p>
+        </div>
+      )}
+
       <p className="mt-3 text-right text-[10px]" style={{ color: "var(--muted)" }}>
         {formatTime(incident.timestamp)}
       </p>
@@ -232,9 +366,57 @@ function IncidentCard({ incident }: { incident: IncidentEvent }) {
   );
 }
 
+// ─── Unsaved Incident Card ────────────────────────────────────────────────────
+
+function UnsavedIncidentCard({ data, onSave }: { data: UnsavedData, onSave: (d: UnsavedData) => void }) {
+  const cfg = SEVERITY_CONFIG[data.severity] ?? SEVERITY_CONFIG["AMAN"];
+  const sensors = data.sensor_data ?? {};
+
+  return (
+    <div className={`rounded-lg border-2 border-dashed p-4 transition-all ${cfg.cls} relative opacity-90 hover:opacity-100`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full animate-ping ${cfg.dotCls}`} />
+          <span className="text-sm font-extrabold" style={{ color: "var(--section-title)" }}>
+            UNSAVED: IOT DATA
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cfg.badgeCls}>{cfg.label}</span>
+          <button
+            onClick={() => onSave(data)}
+            disabled={data.isSaving}
+            className="btn-primary text-[10px] ml-2 py-1 px-2 flex items-center gap-1"
+          >
+            {data.isSaving ? "⏳" : "💾"} Save
+          </button>
+        </div>
+      </div>
+      <div className="mt-3 flex justify-between items-center text-[10px]" style={{ color: "var(--muted)" }}>
+        <span className="font-semibold text-indigo-400">Device ID: {data.device_id.substring(0, 8)}...</span>
+        <span>{formatTime(data.timestamp)}</span>
+      </div>
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        {Object.entries(SENSOR_LABELS).map(([key, label]) => {
+          const val = (sensors as Record<string, number>)[key];
+          return (
+            <div key={key} className="rounded-md p-2 text-center" style={{ background: "var(--surface-soft)" }}>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>{label}</p>
+              <p className="mt-1 font-mono text-xs font-bold" style={{ color: "var(--section-title)" }}>
+                {val != null ? `${Number(val).toFixed(2)}V` : "—"}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const user = getAuthenticatedUser(context.req as any);
   if (!user) {
     return {
@@ -253,11 +435,100 @@ export default function MonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const [devices, setDevices] = useState<{ id: string, name: string, is_active: boolean, last_seen: string | null }[]>([]);
+  const [devices, setDevices] = useState<{ id: string, name: string, is_active: boolean, last_seen: string | null, device_type: string }[]>([]);
   const [filter, setFilter] = useState<"ALL" | "BAHAYA" | "WASPADA" | "AMAN">("ALL");
   const [dataSource, setDataSource] = useState<"all" | "iot" | "droidcam">("all");
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [unsavedData, setUnsavedData] = useState<UnsavedData[]>([]);
+  const [aiResults, setAiResults] = useState<Record<string, GeminiSafetyResponse>>({}); 
+  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
+
   const router = useRouter();
+
+  // ─── Gemini AI Safety Analysis Handler ─────────────────────────────────────
+  const handleRequestAI = async (incident: IncidentEvent) => {
+    // Jangan re-request jika sudah ada hasil
+    if (aiResults[incident.id]) return;
+    
+    setAiLoadingId(incident.id);
+    try {
+      const res = await fetch("/api/monitoring/ai-safety", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          incident_id: incident.id,
+          incident_type: incident.incident_type,
+          severity: incident.severity,
+          sensor_data: incident.sensor_data || {},
+          timestamp: incident.timestamp,
+          source_type: incident.incident_type === "VISUAL_AUDIT" ? "droidcam" : "iot",
+        })
+      });
+      const data: GeminiSafetyResponse = await res.json();
+      setAiResults(prev => ({ ...prev, [incident.id]: data }));
+    } catch (err: unknown) {
+      setAiResults(prev => ({ ...prev, [incident.id]: {
+        gas_terdeteksi: "Gagal menganalisis",
+        status_risiko: incident.severity,
+        ringkasan_bahaya: `Gagal menghubungi layanan AI: ${err instanceof Error ? err.message : "Unknown error"}`,
+        langkah_mitigasi: ["Ikuti prosedur keselamatan umum setempat"],
+        pertolongan_pertama: ["Hubungi tenaga medis jika merasa terpapar"],
+        hal_dihindari: ["Jangan mendekati sumber kebocoran"],
+        kapan_tinggalkan_area: "Segera jika mencium bau tajam atau merasa tidak nyaman",
+        kapan_hubungi_darurat: "Hubungi 112/119 jika ada indikasi kebocoran gas",
+        catatan_ketidakpastian: "Layanan AI tidak dapat dihubungi. Gunakan protokol keselamatan standar.",
+      }}));
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch("/api/monitoring/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal menghapus");
+
+      setIncidents(prev => prev.filter(i => i.id !== id));
+      alert("Data berhasil dihapus secara permanen dari database.");
+    } catch (err: unknown) {
+      alert(`Error menghapus data: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSave = async (data: UnsavedData) => {
+    setUnsavedData(prev => prev.map(d => d.id === data.id ? { ...d, isSaving: true } : d));
+    try {
+      const res = await fetch("/api/monitoring/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: data.device_id,
+          timestamp: data.timestamp,
+          sensors: data.sensor_data,
+          severity: data.severity,
+          source: data.source
+        })
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Gagal menyimpan");
+
+      setUnsavedData(prev => prev.filter(d => d.id !== data.id));
+      alert("Berhasil menyimpan data ke Supabase!");
+      fetchIncidents();
+    } catch (err: unknown) {
+      alert(`Error menyimpan data: ${err instanceof Error ? err.message : String(err)}`);
+      setUnsavedData(prev => prev.map(d => d.id === data.id ? { ...d, isSaving: false } : d));
+    }
+  };
 
   useEffect(() => {
     if (authenticationStatus === "unauthenticated") {
@@ -277,8 +548,8 @@ export default function MonitoringPage() {
       const data: IncidentEvent[] = await res.json();
       setIncidents(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Gagal memuat data insiden.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuat data insiden.");
     } finally {
       setLoading(false);
     }
@@ -300,7 +571,7 @@ export default function MonitoringPage() {
           setConnected(false);
           setDevices([]);
         }
-      } catch (e) {
+      } catch {
         setConnected(false);
         setDevices([]);
       }
@@ -402,8 +673,8 @@ export default function MonitoringPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${filter === f
-                  ? "border-transparent bg-[var(--nav-active-bg)] text-[var(--nav-active-text)]"
-                  : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
+                ? "border-transparent bg-[var(--nav-active-bg)] text-[var(--nav-active-text)]"
+                : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
                 }`}
             >
               {f === "ALL" ? "Semua" : f.charAt(0) + f.slice(1).toLowerCase()}
@@ -416,8 +687,8 @@ export default function MonitoringPage() {
               key={s}
               onClick={() => setDataSource(s)}
               className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${dataSource === s
-                  ? "border-transparent bg-indigo-500/20 text-indigo-400"
-                  : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
+                ? "border-transparent bg-indigo-500/20 text-indigo-400"
+                : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
                 }`}
             >
               {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : "DroidCam (Testing)"}
@@ -425,6 +696,24 @@ export default function MonitoringPage() {
           ))}
         </div>
       </div>
+
+      {/* Unsaved / Live Data Section */}
+      {unsavedData.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center border border-dashed border-indigo-500/30 bg-indigo-500/5 rounded-lg p-4 mb-6">
+          <div>
+            <h2 className="text-sm font-bold text-indigo-400">Data IoT Belum Tersimpan ({unsavedData.length})</h2>
+            <p className="text-[10px] text-[var(--muted)] mt-1">Data aktual dari hardware fisik yang belum masuk ke database.</p>
+          </div>
+        </div>
+      )}
+
+      {unsavedData.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 mb-8 border-b border-[var(--border-soft)] pb-8">
+          {unsavedData.map(d => (
+            <UnsavedIncidentCard key={d.id} data={d} onSave={handleSave} />
+          ))}
+        </div>
+      )}
 
       {/* List */}
       {loading && (
@@ -460,7 +749,15 @@ export default function MonitoringPage() {
       {!loading && !error && filtered.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
           {filtered.map((incident) => (
-            <IncidentCard key={incident.id} incident={incident} />
+            <IncidentCard
+              key={incident.id}
+              incident={incident}
+              onDelete={authenticationStatus === "authenticated" ? handleDelete : undefined}
+              isDeleting={deletingId === incident.id}
+              onRequestAI={handleRequestAI}
+              aiResult={aiResults[incident.id] || null}
+              aiLoading={aiLoadingId === incident.id}
+            />
           ))}
         </div>
       )}

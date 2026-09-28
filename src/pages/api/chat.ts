@@ -19,12 +19,11 @@ export default async function handler(
       return res.status(400).json({ message: 'Message is required' });
     }
 
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'anda_bisa_mengisi_api_key_gemini_anda_disini') {
-      console.warn("GEMINI_API_KEY is not set or using default. Using fallback mock response.");
-      
-      // MOCK FALLBACK
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return res.status(200).json({ reply: `[Sensor: Offline] Saya mengerti, tapi Kunci API Gemini belum dimasukkan atau bermasalah.\nPesan Anda: ${message}` });
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.length < 10) {
+      console.warn("[API/chat] GEMINI_API_KEY is not set or invalid.");
+      return res.status(503).json({
+        message: "Layanan AI belum tersedia. GEMINI_API_KEY belum dikonfigurasi pada server. Silakan hubungi administrator."
+      });
     }
 
     const model = genAI.getGenerativeModel({

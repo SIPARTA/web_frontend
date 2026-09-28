@@ -5,6 +5,8 @@
  * Frontend tidak memegang Supabase key; backend route ini yang memegang.
  *
  * Query: Ambil 100 insiden terbaru, diurutkan dari yang paling baru.
+ * sensor_data dan ai_analysis_text diambil langsung dari DB.
+ * IPFS hydration hanya digunakan sebagai fallback untuk record lama.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -38,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data, error } = await supabase
       .from("incident_events")
-      .select("id, incident_type, severity, image_url, timestamp, is_anchored, audit_log(ipfs_cid, action), incident_event_media(id, source, capture_status, image_reference, timestamp)")
+      .select("id, incident_type, severity, sensor_data, ai_analysis_text, image_url, timestamp, is_anchored, audit_log(ipfs_cid, action), incident_event_media(id, source, capture_status, image_reference, timestamp)")
       .order("timestamp", { ascending: false })
       .limit(100);
 
@@ -65,18 +67,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mappedData = mappedData.filter(incident => incident.source_type === monitoringSource);
     }
 
-    // Hydrate sensor data using FastAPI decryption endpoint
+    // Fallback: Hydrate sensor data via IPFS hanya untuk record LAMA tanpa sensor_data
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_DISEASE_API_URL || "http://127.0.0.1:8000";
     for (const incident of mappedData) {
-      if (incident.audit_log && incident.audit_log.length > 0) {
-        // array audit_log depends on the exact structure, supabase returns an array for one-to-many
+      // Hanya hydrate jika sensor_data kosong/null (record lama sebelum fix)
+      if (!incident.sensor_data && incident.audit_log) {
         const log = Array.isArray(incident.audit_log) ? incident.audit_log[0] : incident.audit_log;
         const cid = log?.ipfs_cid;
         if (cid) {
           try {
-             const res = await fetch(`${backendUrl}/api/v1/incidents/decrypted/${cid}`);
-             if (res.ok) {
-                const dec = await res.json();
+             const decryptRes = await fetch(`${backendUrl}/api/v1/incidents/decrypted/${cid}`);
+             if (decryptRes.ok) {
+                const dec = await decryptRes.json();
                 if (dec.decrypted_data && dec.decrypted_data.sensor_data) {
                     incident.sensor_data = dec.decrypted_data.sensor_data;
                 }
@@ -87,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(200).json(mappedData);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[API/monitoring] Unexpected error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
