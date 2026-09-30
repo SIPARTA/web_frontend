@@ -85,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Hydrate sensor data using FastAPI decryption endpoint
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_DISEASE_API_URL || "http://127.0.0.1:8000";
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_DISEASE_API_URL || "https://siparta-backend.onrender.com";
     for (const incident of mappedData) {
       if (incident.audit_log && incident.audit_log.length > 0) {
         // array audit_log depends on the exact structure, supabase returns an array for one-to-many
