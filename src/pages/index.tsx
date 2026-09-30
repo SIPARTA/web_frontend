@@ -47,10 +47,7 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/signin" className="btn-primary text-sm">
-              Masuk ke akun
-            </Link>
-            <Link href="/signup" className="btn-secondary text-sm">
-              Buat akun baru
+              Masuk Akun via MetaMask
             </Link>
           </div>
 
