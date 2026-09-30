@@ -68,10 +68,14 @@ function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3 ml-4 border-l pl-4 border-[var(--border-soft)]">
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-semibold" style={{ color: "var(--section-title)" }}>
-                    {user?.role === "admin" ? "Admin" : "User"}
+                    {user?.name || (user?.role === "admin" ? "Admin" : "User")}
                   </span>
                   <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                    {user?.wallet_address ? `${user.wallet_address.slice(0,6)}...${user.wallet_address.slice(-4)}` : ""}
+                    {user?.wallet_address 
+                      ? (user.wallet_address.startsWith("google:") 
+                          ? "Google Auth" 
+                          : `${user.wallet_address.slice(0,6)}...${user.wallet_address.slice(-4)}`) 
+                      : ""}
                   </span>
                 </div>
                 <button

@@ -107,9 +107,9 @@ export default function TransactionsPage() {
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>Akses Ditolak</h2>
         <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
-          Fitur Transaksi membutuhkan autentikasi MetaMask. Silakan login terlebih dahulu untuk mengakses histori transaksi.
+          Fitur Transaksi membutuhkan autentikasi (MetaMask atau Google). Silakan login terlebih dahulu untuk mengakses histori transaksi.
         </p>
-        <Link href="/signin" className="btn-primary">Login MetaMask</Link>
+        <Link href="/signin" className="btn-primary">Masuk ke SIPARTA</Link>
       </div>
     );
   }

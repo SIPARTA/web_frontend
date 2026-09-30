@@ -47,7 +47,7 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/signin" className="btn-primary text-sm">
-              Masuk Akun via MetaMask
+              Masuk ke SIPARTA
             </Link>
           </div>
 
@@ -168,7 +168,7 @@ export default function Home() {
             <h2 className="section-title mt-3">Contoh tingkat risiko campuran</h2>
           </div>
           <Link href="/blockchain" className="btn-secondary text-sm">
-            Hubungkan MetaMask
+            Masuk ke SIPARTA
           </Link>
         </div>
 

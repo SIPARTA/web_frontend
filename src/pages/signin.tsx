@@ -21,15 +21,13 @@ const benefits = [
 export default function SignInPage() {
   const router = useRouter();
   const account = useActiveAccount();
-  const { walletStatus, authenticationStatus, databaseSyncStatus, login, error } = useAuth();
+  const { walletStatus, authenticationStatus, databaseSyncStatus, login, loginWithGoogle, error } = useAuth();
 
   useEffect(() => {
-    if (walletStatus === "connected" && authenticationStatus === "unauthenticated") {
-      login();
-    } else if (authenticationStatus === "authenticated") {
+    if (authenticationStatus === "authenticated") {
       router.push("/");
     }
-  }, [walletStatus, authenticationStatus, login, router]);
+  }, [authenticationStatus, router]);
 
   return (
     <div className="mx-auto max-w-5xl py-8 min-h-[calc(100vh-10rem)] flex items-center">
@@ -47,10 +45,10 @@ export default function SignInPage() {
           <div className="mb-6 flex items-center justify-between gap-5">
             <div>
               <p className="text-sm font-extrabold" style={{ color: "var(--section-title)" }}>
-                Autentikasi MetaMask
+                Autentikasi Terpadu
               </p>
               <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-                Sistem Pintar Deteksi Kimia Rumah Tangga
+                Pilih metode masuk ke SIPARTA
               </p>
             </div>
             <span className="brand-mark relative flex h-12 w-12 items-center justify-center rounded-lg">
@@ -105,35 +103,66 @@ export default function SignInPage() {
 
               <div className="module-card">
                 <p className="text-sm font-semibold mb-3" style={{ color: "var(--section-title)" }}>
-                  Keuntungan Web3
+                  Cara Masuk
                 </p>
                 <ul className="space-y-2.5">
-                  {benefits.map((text) => (
-                    <li key={text} className="text-sm leading-6" style={{ color: "var(--muted)" }}>
-                      {text}
-                    </li>
-                  ))}
+                  <li className="text-sm leading-6" style={{ color: "var(--muted)" }}>
+                    <b>User Biasa:</b> Gunakan "Lanjutkan dengan Google" untuk masuk dengan cepat tanpa dompet kripto.
+                  </li>
+                  <li className="text-sm leading-6" style={{ color: "var(--muted)" }}>
+                    <b>Admin / Operator Web3:</b> Gunakan MetaMask untuk validasi transaksi di jaringan Polygon.
+                  </li>
                 </ul>
               </div>
             </div>
 
-            <div className="soft-panel p-5 flex flex-col justify-center">
+            <div className="soft-panel p-5 flex flex-col justify-center gap-4">
+              <button
+                onClick={loginWithGoogle}
+                className="btn-primary w-full shadow-md flex items-center justify-center gap-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z" />
+                </svg>
+                Lanjutkan dengan Google
+              </button>
+
+              <div className="flex items-center gap-4 my-2">
+                <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+                <span className="text-xs uppercase font-semibold text-gray-400">ATAU WEB3</span>
+                <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+              </div>
+
               {client ? (
                 <>
                   <ConnectButton
                     client={client}
                     chain={polygonAmoy}
                     connectButton={{
-                      label: account ? "Terhubung" : "Hubungkan MetaMask",
+                      label: account ? "Terhubung" : "Lanjutkan dengan MetaMask",
                       className: "w-full btn-primary",
                     }}
                   />
-                  <div className="mt-5 rounded-md p-4 text-sm leading-6 border" style={{ background: "var(--surface-soft)", borderColor: "var(--border-soft)", color: "var(--muted)" }}>
-                    <p className="font-semibold mb-1" style={{ color: "var(--section-title)" }}>
-                      Baru di SIPARTA?
-                    </p>
-                    Akun akan otomatis dibuat saat Anda melakukan Sign-In (SIWE) dengan dompet Anda.
-                  </div>
+                  
+                  {walletStatus === "connected" && authenticationStatus === "unauthenticated" && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <button 
+                        onClick={login}
+                        className="btn-primary w-full shadow-lg"
+                        style={{ backgroundColor: "var(--teal-600)" }}
+                      >
+                        Verifikasi & Masuk (SIWE)
+                      </button>
+                    </div>
+                  )}
+
+                  {authenticationStatus === "authenticating" && (
+                    <div className="mt-2 p-3 text-center border rounded-md" style={{ borderColor: "var(--teal-500)", backgroundColor: "rgba(13, 148, 136, 0.1)" }}>
+                      <p className="text-sm font-medium text-teal-700 dark:text-teal-400">
+                        Meminta Tanda Tangan (SIWE)...
+                      </p>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-5 text-sm text-orange-700">

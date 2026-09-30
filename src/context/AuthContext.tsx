@@ -8,10 +8,13 @@ type AuthState = {
   user: any | null;
   error: string | null;
   login: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
+
+import { supabase } from "../lib/supabaseClient";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const account = useActiveAccount();
@@ -42,6 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      await supabase.auth.signOut();
     } catch (e) {
       console.error("Logout failed:", e);
     }
@@ -126,6 +130,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [account]);
 
+  const loginWithGoogle = useCallback(async () => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      // Note: Supabase will redirect the page, so we don't need to do anything else here.
+    } catch (err: any) {
+      console.error("[AuthContext] Google Login Error:", err);
+      setError(err.message || "Gagal inisiasi Google Login");
+      setAuthenticationStatus("unauthenticated");
+      isAuthenticating.current = false;
+    }
+  }, []);
+
   // 1. Initial auth restoration (run once on mount)
   useEffect(() => {
     const saved = localStorage.getItem("siparta_web3_user");
@@ -151,8 +177,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 2. Handle account changes (only if user is already authenticated)
   useEffect(() => {
     if (account?.address && user?.wallet_address) {
-      // Jika account yang terhubung berbeda dengan session yang ada, logout!
-      if (account.address !== user.wallet_address) {
+      // Jika account yang terhubung berbeda dengan session yang ada, dan bukan user google, logout!
+      if (account.address !== user.wallet_address && !user.wallet_address.startsWith("google:")) {
         console.log("[AuthContext] Wallet account changed. Logging out...");
         logout();
       }
@@ -160,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [account?.address, user?.wallet_address, logout]);
 
   return (
-    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, logout }}>
+    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
