@@ -126,47 +126,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [account]);
 
-  const previousAddress = useRef<string | undefined>(undefined);
-
-  // Cek sesi yang ada di localStorage saat pertama kali load
+  // 1. Initial auth restoration (run once on mount)
   useEffect(() => {
     const saved = localStorage.getItem("siparta_web3_user");
-    
-    if (account?.address) {
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.wallet_address === account.address) {
-            setUser(parsed);
-            setAuthenticationStatus("authenticated");
-            setDatabaseSyncStatus("synchronized");
-          } else {
-            // Address berubah, harus login ulang
-            logout();
-          }
-        } catch (e) {
-          logout();
-        }
-      } else {
-        // Connected to wallet but no session in localStorage
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setUser(parsed);
+        setAuthenticationStatus("authenticated");
+        setDatabaseSyncStatus("synchronized");
+      } catch (e) {
+        // Invalid session data
+        localStorage.removeItem("siparta_web3_user");
         setAuthenticationStatus("unauthenticated");
         setDatabaseSyncStatus("unsynchronized");
       }
-    } else if (account === undefined) {
-      // Thirdweb account might be undefined during initial hydration even if connected.
-      // If we previously had an address and now we don't, it's a genuine disconnect.
-      if (previousAddress.current !== undefined) {
-        logout();
-      } else if (!saved) {
-        // Only if there is absolutely no saved session, we confirm unauthenticated.
-        setAuthenticationStatus("unauthenticated");
-        setDatabaseSyncStatus("unsynchronized");
-      }
-      // If there IS a saved session and we never had an address yet, we wait (hydration).
+    } else {
+      // No saved session
+      setAuthenticationStatus("unauthenticated");
+      setDatabaseSyncStatus("unsynchronized");
     }
+  }, []);
 
-    previousAddress.current = account?.address;
-  }, [account?.address, logout]);
+  // 2. Handle account changes (only if user is already authenticated)
+  useEffect(() => {
+    if (account?.address && user?.wallet_address) {
+      // Jika account yang terhubung berbeda dengan session yang ada, logout!
+      if (account.address !== user.wallet_address) {
+        console.log("[AuthContext] Wallet account changed. Logging out...");
+        logout();
+      }
+    }
+  }, [account?.address, user?.wallet_address, logout]);
 
   return (
     <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, logout }}>
