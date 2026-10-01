@@ -69,6 +69,13 @@ interface GeminiSafetyResponse {
   catatan_ketidakpastian: string | null;
 }
 
+interface SystemStatus {
+  ai_jst: "online" | "offline";
+  gemini_ai: "online" | "offline";
+  iot_production: "online" | "offline";
+  droidcam_testing: "online" | "offline";
+}
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -413,6 +420,39 @@ function UnsavedIncidentCard({ data, onSave }: { data: UnsavedData, onSave: (d: 
   );
 }
 
+// ─── Status Panel ─────────────────────────────────────────────────────────────
+
+function StatusPanel({ status }: { status: SystemStatus | null }) {
+  if (!status) return null;
+
+  const items = [
+    { label: "AI JST Inference", key: "ai_jst", value: status.ai_jst },
+    { label: "Gemini AI (Safety)", key: "gemini_ai", value: status.gemini_ai },
+    { label: "IoT Production", key: "iot_production", value: status.iot_production },
+    { label: "DroidCam Testing", key: "droidcam_testing", value: status.droidcam_testing },
+  ];
+
+  return (
+    <section className="soft-panel mt-6 mb-6">
+      <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--section-title)" }}>
+        Status Integrasi Sistem AI & Perangkat
+      </h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((item) => (
+          <div key={item.key} className="flex flex-col gap-1 rounded-md border p-3 text-xs" style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)" }}>
+            <div className="flex justify-between items-center font-semibold" style={{ color: "var(--text-default)" }}>
+              <span>{item.label}</span>
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${item.value === 'online' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                {item.value === 'online' ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
@@ -443,6 +483,7 @@ export default function MonitoringPage() {
   const [unsavedData, setUnsavedData] = useState<UnsavedData[]>([]);
   const [aiResults, setAiResults] = useState<Record<string, GeminiSafetyResponse>>({}); 
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
 
   const router = useRouter();
 
@@ -576,13 +617,28 @@ export default function MonitoringPage() {
         setDevices([]);
       }
     };
+    
+    // Fungsi untuk cek system status
+    const checkSystemStatus = async () => {
+      try {
+        const res = await fetch("/api/monitoring/system-status");
+        if (res.ok) {
+          const data = await res.json();
+          setSystemStatus(data);
+        }
+      } catch (err) {
+        console.error("Gagal fetch system status", err);
+      }
+    };
 
     checkDeviceStatus();
+    checkSystemStatus();
 
     // Polling fallback setiap 10 detik (jika Realtime belum dikonfigurasi)
     const interval = setInterval(() => {
       fetchIncidents();
       checkDeviceStatus();
+      checkSystemStatus();
     }, 10_000);
 
     return () => {
@@ -641,6 +697,9 @@ export default function MonitoringPage() {
 
       {/* Stats */}
       <StatsBar incidents={incidents} />
+      
+      {/* System Status Panel */}
+      <StatusPanel status={systemStatus} />
 
       {/* IoT Devices Status */}
       {devices.length > 0 && (
