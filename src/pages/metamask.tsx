@@ -98,9 +98,19 @@ export default function SignInPage() {
                         Error: {error}
                       </p>
                     )}
-                    <p className="font-mono text-[10px] truncate mt-2 opacity-70" style={{ color: "var(--section-title)" }}>
-                      {account.address}
-                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="font-mono text-[10px] truncate opacity-70" style={{ color: "var(--section-title)" }}>
+                        {account.address}
+                      </p>
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(account.address)}
+                        className="text-[10px] px-2 py-0.5 rounded cursor-pointer border"
+                        style={{ borderColor: "var(--teal-500)", color: "var(--teal-600)" }}
+                        title="Salin alamat"
+                      >
+                        Salin
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div>
@@ -121,7 +131,7 @@ export default function SignInPage() {
                     <b>User Konvensional:</b> Silakan gunakan halaman <Link href="/signin" className="text-teal-600 underline">Sign In</Link> jika Anda ingin masuk menggunakan Email atau Google OAuth.
                   </li>
                   <li className="text-sm leading-6" style={{ color: "var(--muted)" }}>
-                    <b>Web3 & Akun Tertaut:</b> Gunakan MetaMask untuk masuk ke akun Web3 Anda atau menautkan dompet ke sesi aktif Anda.
+                    <b>Web3:</b> Gunakan MetaMask untuk masuk ke akun Web3 Anda dan mengakses fitur transaksi blockchain.
                   </li>
                 </ul>
               </div>
@@ -152,15 +162,7 @@ export default function SignInPage() {
                         </button>
                       )}
                       
-                      {(authenticationStatus === "authenticated" && user && user.wallet_address !== account?.address && user.metamask_address !== account?.address) && (
-                        <button
-                          onClick={login}
-                          className="btn-primary w-full shadow-lg text-sm py-2"
-                          style={{ backgroundColor: "var(--teal-600)" }}
-                        >
-                          Tautkan Wallet ke Akun Ini (SIWE)
-                        </button>
-                      )}
+
                     </div>
                   )}
 

@@ -22,11 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Cek apakah user ada (bisa di wallet_address atau metamask_address)
+    // Cek apakah user ada
     const { data: user, error: findError } = await supabase
       .from("users")
       .select("*")
-      .or(`wallet_address.eq.${address},metamask_address.eq.${address}`)
+      .eq("wallet_address", address)
       .single();
 
     let targetUser = user;

@@ -281,21 +281,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (account?.address && user) {
       // Jika user murni login via MetaMask (wallet_address starts with 0x)
       // dan address yang terhubung berubah, logout.
-      // Atau jika user sudah melink MetaMask (metamask_address) dan berubah, logout.
-      // TAPI jika user login via Google/Email dan belum punya metamask_address, biarkan saja (karena mau proses link).
       const isPureWeb3 = user.wallet_address?.startsWith("0x");
-      const hasLinkedMetaMask = !!user.metamask_address;
-      
-      const isAddressMismatch = account.address !== user.wallet_address && account.address !== user.metamask_address;
+      const isAddressMismatch = account.address !== user.wallet_address;
 
       if (isAddressMismatch) {
-        if (isPureWeb3 || hasLinkedMetaMask) {
+        if (isPureWeb3) {
            console.log("[AuthContext] Wallet account changed. Logging out...");
            logout();
         }
       }
     }
-  }, [account?.address, user?.wallet_address, user?.metamask_address, logout]);
+  }, [account?.address, user?.wallet_address, logout]);
 
   let authMethod: "guest" | "google" | "email_password" | "metamask_siwe" = "guest";
   if (authenticationStatus === "authenticated" && user) {

@@ -114,7 +114,7 @@ export default function TransactionsPage() {
     );
   }
 
-  const isPremium = user?.wallet_address?.startsWith("0x") || user?.metamask_address;
+  const isPremium = user?.wallet_address?.startsWith("0x");
 
   if (!isPremium) {
     return (

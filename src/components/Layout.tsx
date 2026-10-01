@@ -78,17 +78,18 @@ function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3 ml-4 border-l pl-4 border-[var(--border-soft)]">
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-semibold" style={{ color: "var(--section-title)" }}>
-                    {user?.name || (user?.role === "admin" ? "Admin" : "User")}
+                    {authMethod === "metamask_siwe" && user?.wallet_address 
+                      ? `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`
+                      : user?.name || user?.full_name || (user?.role === "admin" ? "Admin" : "User")}
                   </span>
                   <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                    {user?.wallet_address?.startsWith("google:") 
+                    {authMethod === "google" 
                         ? "Google Auth" 
-                        : user?.wallet_address?.startsWith("email:")
+                        : authMethod === "email_password"
                           ? "Email Auth"
-                          : user?.wallet_address
-                            ? `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`
+                          : authMethod === "metamask_siwe"
+                            ? "Polygon Amoy"
                             : ""}
-                    {user?.metamask_address && ` + Linked: ${user.metamask_address.slice(0, 6)}...`}
                   </span>
                 </div>
                 <button
