@@ -5,6 +5,7 @@ import { polygonAmoy } from "thirdweb/chains";
 type AuthState = {
   walletStatus: "connected" | "disconnected" | "initializing";
   authenticationStatus: "authenticated" | "unauthenticated" | "authenticating" | "initializing";
+  authMethod: "guest" | "google" | "email_password" | "metamask_siwe";
   databaseSyncStatus: "synchronized" | "unsynchronized" | "initializing";
   user: any | null;
   error: string | null;
@@ -296,8 +297,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [account?.address, user?.wallet_address, user?.metamask_address, logout]);
 
+  let authMethod: "guest" | "google" | "email_password" | "metamask_siwe" = "guest";
+  if (authenticationStatus === "authenticated" && user) {
+    if (user.wallet_address?.startsWith("google:")) {
+      authMethod = "google";
+    } else if (user.wallet_address?.startsWith("email:")) {
+      authMethod = "email_password";
+    } else if (user.wallet_address?.startsWith("0x")) {
+      authMethod = "metamask_siwe";
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, loginWithGoogle, loginWithEmail, signUpWithEmail, logout }}>
+    <AuthContext.Provider value={{ walletStatus, authenticationStatus, authMethod, databaseSyncStatus, user, error, login, loginWithGoogle, loginWithEmail, signUpWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -16,7 +16,7 @@ const navItems = [
 
 function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { authenticationStatus, user, logout } = useAuth();
+  const { authenticationStatus, user, logout, authMethod } = useAuth();
   const isAuthenticated = authenticationStatus === "authenticated";
 
   return (
@@ -42,11 +42,19 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           <nav className="flex items-center gap-1">
             {navItems.map((item) => {
-              // Hide login if already authenticated
-              if (isAuthenticated && item.href === "/signin") return null;
-
               // Hide Monitoring and Transaksi for Guest (unauthenticated)
               if (!isAuthenticated && (item.href === "/monitoring" || item.href === "/transactions")) return null;
+
+              // Hide Sign In and Sign Up when authenticated (any method)
+              if (isAuthenticated && (item.href === "/signin" || item.href === "/signup")) return null;
+
+              // MetaMask navigation logic
+              if (item.href === "/metamask") {
+                 if (isAuthenticated && (authMethod === "google" || authMethod === "email_password")) {
+                    return null; // Hide for Web2 users
+                 }
+                 // Show for Guest or MetaMask SIWE users
+              }
 
               const isActive = router.pathname === item.href;
               return (

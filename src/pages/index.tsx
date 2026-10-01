@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "../context/AuthContext";
 
 const metrics = [
   { label: "Dataset gas", value: "8 jenis" },
@@ -30,6 +31,9 @@ const risks = [
 ];
 
 export default function Home() {
+  const { authenticationStatus } = useAuth();
+  const isAuthenticated = authenticationStatus === "authenticated";
+
   return (
     <div className="space-y-14">
       <section className="grid items-center gap-8 lg:grid-cols-[1.02fr_0.98fr]">
@@ -45,14 +49,16 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link href="/signin" className="btn-primary text-sm">
-              Masuk Akun
-            </Link>
-            <Link href="/signup" className="btn-outline-primary text-sm">
-              Daftar Akun
-            </Link>
-          </div>
+          {!isAuthenticated && (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/signin" className="btn-primary text-sm">
+                Masuk Akun
+              </Link>
+              <Link href="/signup" className="btn-outline-primary text-sm">
+                Daftar Akun
+              </Link>
+            </div>
+          )}
 
           <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
             {metrics.map((item) => (
@@ -170,7 +176,7 @@ export default function Home() {
             <p className="section-kicker">Referensi cepat</p>
             <h2 className="section-title mt-3">Contoh tingkat risiko campuran</h2>
           </div>
-          <Link href="/blockchain" className="btn-secondary text-sm">
+          <Link href={isAuthenticated ? "/monitoring" : "/signin"} className="btn-secondary text-sm">
             Masuk ke SIPARTA
           </Link>
         </div>

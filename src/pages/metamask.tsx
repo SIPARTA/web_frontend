@@ -22,7 +22,7 @@ const benefits = [
 export default function SignInPage() {
   const router = useRouter();
   const account = useActiveAccount();
-  const { walletStatus, authenticationStatus, databaseSyncStatus, login, loginWithGoogle, loginWithEmail, signUpWithEmail, error, user } = useAuth();
+  const { walletStatus, authenticationStatus, authMethod, databaseSyncStatus, login, loginWithGoogle, loginWithEmail, signUpWithEmail, error, user } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,20 +34,11 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (authenticationStatus === "authenticated") {
-      // If user has a wallet connected and it matches their metamask_address or wallet_address, redirect.
-      // Or if they are authenticated but no wallet is connected (just browsing the page), do not redirect yet if they want to link.
-      // Wait, if they are logging in via MetaMask, we should redirect them to '/' after success.
-      // Let's redirect if user.metamask_address === account?.address or user.wallet_address === account?.address
-      if (account?.address) {
-        if (user?.wallet_address === account.address || user?.metamask_address === account.address) {
-          router.push("/");
-        }
-      } else if (!user) {
-         // Just a fallback
-         router.push("/");
+      if (authMethod === "metamask_siwe" && account?.address && user?.wallet_address === account.address) {
+        router.push("/");
       }
     }
-  }, [authenticationStatus, router, account, user]);
+  }, [authenticationStatus, authMethod, router, account, user]);
 
   return (
     <div className="mx-auto max-w-5xl py-8 min-h-[calc(100vh-10rem)] flex items-center">
