@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Base query for transactions_logs
     let query = supabase
-      .from("transactions_logs")
+      .from("transaction_logs")
       .select(`
         id,
         tx_hash,
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[API/transactions] Full query failed (possibly missing user_id column), attempting fallback:", error.message);
       // Fallback without user_id equality filter and selection
       const fallbackQuery = supabase
-        .from("transactions_logs")
+        .from("transaction_logs")
         .select(`
           id,
           tx_hash,
