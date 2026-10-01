@@ -47,7 +47,10 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/signin" className="btn-primary text-sm">
-              Masuk ke SIPARTA
+              Masuk Akun
+            </Link>
+            <Link href="/signup" className="btn-white text-sm">
+              Daftar Akun
             </Link>
           </div>
 

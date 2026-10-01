@@ -55,6 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     severity: severity.toUpperCase(),
     timestamp,
     is_anchored: false,
+    user_id: user.id,
   };
 
   if (device_id) {

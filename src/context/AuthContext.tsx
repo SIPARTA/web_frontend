@@ -9,6 +9,8 @@ type AuthState = {
   error: string | null;
   login: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithEmail: (e: string, p: string) => Promise<void>;
+  signUpWithEmail: (n: string, e: string, p: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -152,6 +154,88 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const completeEmailSession = async (session: any) => {
+    // Send session to our unified backend to generate siparta JWT
+    const verifyRes = await fetch("/api/auth/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: session.access_token,
+      })
+    });
+
+    if (!verifyRes.ok) throw new Error("Gagal mapping sesi Email. Coba lagi.");
+    const data = await verifyRes.json();
+
+    if (data.success && data.user) {
+      localStorage.setItem("siparta_web3_user", JSON.stringify(data.user));
+      setUser(data.user);
+      setDatabaseSyncStatus("synchronized");
+      setAuthenticationStatus("authenticated");
+    } else {
+      throw new Error("Sesi tidak valid");
+    }
+  };
+
+  const loginWithEmail = useCallback(async (email: string, pass: string) => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    try {
+      setError(null);
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass
+      });
+      if (sbError) throw sbError;
+      if (data.session) {
+         await completeEmailSession(data.session);
+      }
+    } catch(err: any) {
+      console.warn("[AuthContext] Email Login Error:", err.message);
+      setError(err.message || "Gagal masuk. Periksa kembali email dan password.");
+      setAuthenticationStatus("unauthenticated");
+      setUser(null);
+    } finally {
+      isAuthenticating.current = false;
+    }
+  }, []);
+
+  const signUpWithEmail = useCallback(async (name: string, email: string, pass: string) => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    try {
+      setError(null);
+      const { data, error: sbError } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      });
+      if (sbError) throw sbError;
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+         setError("Akun dengan email ini sudah terdaftar. Silakan Sign In.");
+         setAuthenticationStatus("unauthenticated");
+      } else if (data.session) {
+         await completeEmailSession(data.session);
+      } else {
+         setError("Registrasi berhasil. Silakan periksa kotak masuk/spam email Anda untuk verifikasi.");
+         setAuthenticationStatus("unauthenticated");
+      }
+    } catch(err: any) {
+      console.warn("[AuthContext] Email SignUp Error:", err.message);
+      setError(err.message || "Gagal mendaftar. Coba gunakan email lain.");
+      setAuthenticationStatus("unauthenticated");
+      setUser(null);
+    } finally {
+      isAuthenticating.current = false;
+    }
+  }, []);
+
   // 1. Initial auth restoration (run once on mount)
   useEffect(() => {
     const saved = localStorage.getItem("siparta_web3_user");
@@ -176,17 +260,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 2. Handle account changes (only if user is already authenticated)
   useEffect(() => {
-    if (account?.address && user?.wallet_address) {
-      // Jika account yang terhubung berbeda dengan session yang ada, dan bukan user google, logout!
-      if (account.address !== user.wallet_address && !user.wallet_address.startsWith("google:")) {
-        console.log("[AuthContext] Wallet account changed. Logging out...");
-        logout();
+    if (account?.address && user) {
+      // Jika user murni login via MetaMask (wallet_address starts with 0x)
+      // dan address yang terhubung berubah, logout.
+      // Atau jika user sudah melink MetaMask (metamask_address) dan berubah, logout.
+      // TAPI jika user login via Google/Email dan belum punya metamask_address, biarkan saja (karena mau proses link).
+      const isPureWeb3 = user.wallet_address?.startsWith("0x");
+      const hasLinkedMetaMask = !!user.metamask_address;
+      
+      const isAddressMismatch = account.address !== user.wallet_address && account.address !== user.metamask_address;
+
+      if (isAddressMismatch) {
+        if (isPureWeb3 || hasLinkedMetaMask) {
+           console.log("[AuthContext] Wallet account changed. Logging out...");
+           logout();
+        }
       }
     }
-  }, [account?.address, user?.wallet_address, logout]);
+  }, [account?.address, user?.wallet_address, user?.metamask_address, logout]);
 
   return (
-    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, loginWithGoogle, loginWithEmail, signUpWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

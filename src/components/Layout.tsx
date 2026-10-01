@@ -10,6 +10,8 @@ const navItems = [
   { href: "/dataset", label: "Dataset & Sensor" },
   { href: "/transactions", label: "Transaksi" },
   { href: "/signin", label: "Masuk" },
+  { href: "/signup", label: "Daftar" },
+  { href: "/metamask", label: "MetaMask" },
 ];
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -42,10 +44,10 @@ function Layout({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               // Hide login if already authenticated
               if (isAuthenticated && item.href === "/signin") return null;
-              
+
               // Hide Monitoring and Transaksi for Guest (unauthenticated)
               if (!isAuthenticated && (item.href === "/monitoring" || item.href === "/transactions")) return null;
-              
+
               const isActive = router.pathname === item.href;
               return (
                 <Link
@@ -63,7 +65,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            
+
             {isAuthenticated && (
               <div className="flex items-center gap-3 ml-4 border-l pl-4 border-[var(--border-soft)]">
                 <div className="flex flex-col items-end">
@@ -71,11 +73,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                     {user?.name || (user?.role === "admin" ? "Admin" : "User")}
                   </span>
                   <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                    {user?.wallet_address 
-                      ? (user.wallet_address.startsWith("google:") 
-                          ? "Google Auth" 
-                          : `${user.wallet_address.slice(0,6)}...${user.wallet_address.slice(-4)}`) 
-                      : ""}
+                    {user?.wallet_address?.startsWith("google:") 
+                        ? "Google Auth" 
+                        : user?.wallet_address?.startsWith("email:")
+                          ? "Email Auth"
+                          : user?.wallet_address
+                            ? `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`
+                            : ""}
+                    {user?.metamask_address && ` + Linked: ${user.metamask_address.slice(0, 6)}...`}
                   </span>
                 </div>
                 <button

@@ -27,21 +27,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Verifikasi record ada
-  const { error: existError } = await supabase
+  let query = supabase
     .from("incident_events")
     .select("id")
-    .eq("id", id)
-    .single();
-
-  if (existError) {
-    return res.status(404).json({ error: "Record not found or already deleted" });
+    .eq("id", id);
+    
+  if (user.role !== "admin") {
+    query = query.eq("user_id", user.id);
   }
 
-  const { error } = await supabase
+  // Verifikasi record ada
+  const { error: existError } = await query.single();
+
+  if (existError) {
+    return res.status(404).json({ error: "Record not found or already deleted (or unauthorized)" });
+  }
+
+  let deleteQuery = supabase
     .from("incident_events")
     .delete()
     .eq("id", id);
+    
+  if (user.role !== "admin") {
+    deleteQuery = deleteQuery.eq("user_id", user.id);
+  }
+
+  const { error } = await deleteQuery;
 
   if (error) {
     console.error("[API/monitoring/delete] Supabase delete error:", error);
