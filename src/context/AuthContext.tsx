@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from "react";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react";
+import { polygonAmoy } from "thirdweb/chains";
 
 type AuthState = {
   walletStatus: "connected" | "disconnected" | "initializing";
@@ -20,6 +21,8 @@ import { supabase } from "../lib/supabaseClient";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const account = useActiveAccount();
+  const activeChain = useActiveWalletChain();
+  const switchChain = useSwitchActiveWalletChain();
   const [walletStatus, setWalletStatus] = useState<"connected" | "disconnected" | "initializing">("initializing");
   const [authenticationStatus, setAuthenticationStatus] = useState<"authenticated" | "unauthenticated" | "authenticating" | "initializing">("initializing");
   const [databaseSyncStatus, setDatabaseSyncStatus] = useState<"synchronized" | "unsynchronized" | "initializing">("initializing");
@@ -81,14 +84,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       setError(null);
+
+      // Ensure chain is Polygon Amoy before signing
+      if (activeChain?.id !== polygonAmoy.id) {
+        try {
+          await switchChain(polygonAmoy);
+        } catch (switchErr) {
+          throw new Error("Gagal mengganti jaringan ke Polygon Amoy. Harap ganti secara manual di wallet Anda.");
+        }
+      }
       
       // 1. Dapatkan Nonce dari backend
       const nonceRes = await fetch(`/api/auth/nonce?address=${account.address}`);
       if (!nonceRes.ok) throw new Error("Gagal mendapatkan nonce dari server");
       const { nonce } = await nonceRes.json();
 
-      // 2. Minta Signature dari user (SIWE Message)
-      const message = `Welcome to SIPARTA!\n\nPlease sign this message to verify your identity.\n\nNonce: ${nonce}`;
+      // 2. Minta Signature dari user (SIWE Message - EIP-4361 compliant)
+      const domain = window.location.host;
+      const origin = window.location.origin;
+      const statement = 'Welcome to SIPARTA! Please sign this message to verify your identity.';
+      const issuedAt = new Date().toISOString();
+
+      const message = `${domain} wants you to sign in with your Ethereum account:\n${account.address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nChain ID: ${polygonAmoy.id}\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
       
       // In v5 thirdweb, account object has signMessage
       let signature;
@@ -130,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       isAuthenticating.current = false;
     }
-  }, [account]);
+  }, [account, activeChain, switchChain]);
 
   const loginWithGoogle = useCallback(async () => {
     if (isAuthenticating.current) return;

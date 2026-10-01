@@ -39,10 +39,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "No nonce found. Please request a new nonce." });
     }
 
-    // Ekstrak nonce dari message (baris terakhir)
+    // Ekstrak nonce dari message
     const nonceMatch = message.match(/Nonce: ([a-f0-9]+)/);
     if (!nonceMatch || nonceMatch[1] !== user.nonce) {
       return res.status(401).json({ error: "Invalid nonce in message" });
+    }
+
+    // Validasi EIP-4361 properties
+    const domainMatch = message.match(/^([a-zA-Z0-9.-]+) wants you to sign in/);
+    const uriMatch = message.match(/URI: (https?:\/\/[^\n]+)/);
+    const chainIdMatch = message.match(/Chain ID: (\d+)/);
+
+    // Dapatkan host dari request (bisa dari headers.host)
+    const reqHost = req.headers.host;
+    
+    if (domainMatch && reqHost && domainMatch[1] !== reqHost) {
+      return res.status(401).json({ error: "Invalid domain in SIWE message" });
+    }
+    if (chainIdMatch && chainIdMatch[1] !== "80002") {
+      return res.status(401).json({ error: "Invalid Chain ID in SIWE message. Must be 80002 (Polygon Amoy)" });
     }
 
     // Verifikasi signature
