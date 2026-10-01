@@ -96,9 +96,6 @@ export default function SignInPage() {
               <label className="block text-sm font-semibold" style={{ color: "var(--foreground)" }}>
                 Password
               </label>
-              <Link href="/forgot-password" className="text-sm font-semibold hover:underline" style={{ color: "var(--teal-600)" }}>
-                Lupa Password?
-              </Link>
             </div>
             <input
               type="password"
@@ -107,6 +104,9 @@ export default function SignInPage() {
               className="form-input"
               placeholder="Masukkan password"
             />
+            <Link href="/forgot-password" className="text-sm font-semibold hover:underline" style={{ color: "var(--teal-600)" }}>
+              Lupa Password?
+            </Link>
           </div>
 
           {(localError || authError) && (
@@ -121,8 +121,8 @@ export default function SignInPage() {
         </form>
 
         <div className="mt-6 pt-5 border-t space-y-2" style={{ borderColor: "var(--border-soft)" }}>
-          <Link 
-            href="/metamask" 
+          <Link
+            href="/metamask"
             className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 p-2 rounded-md text-sm shadow-sm transition-colors"
           >
             <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
