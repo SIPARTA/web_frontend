@@ -141,8 +141,16 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t space-y-3" style={{ borderColor: "var(--border-soft)" }}>
-            <Link href="/metamask" className="btn-secondary w-full text-sm">
+          <div className="mt-6 pt-5 border-t space-y-2" style={{ borderColor: "var(--border-soft)" }}>
+            <Link 
+              href="/metamask" 
+              className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 p-2 rounded-md text-sm shadow-sm transition-colors"
+            >
+              <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                <path d="M18 12h2" />
+              </svg>
               Daftar dengan MetaMask
             </Link>
             <button
@@ -155,8 +163,8 @@ export default function SignUpPage() {
               </svg>
               Daftar dengan Google
             </button>
-            <div className="pt-2 text-center text-sm" style={{ color: "var(--muted)" }}>
-              Sudah punya akun?{" "}
+            <div className="pt-2 flex justify-center items-center gap-1 text-sm" style={{ color: "var(--muted)" }}>
+              <span>Sudah punya akun?</span>
               <Link href="/signin" className="font-semibold hover:underline" style={{ color: "var(--teal-600)" }}>
                 Masuk
               </Link>

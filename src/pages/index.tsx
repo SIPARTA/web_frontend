@@ -49,7 +49,7 @@ export default function Home() {
             <Link href="/signin" className="btn-primary text-sm">
               Masuk Akun
             </Link>
-            <Link href="/signup" className="btn-white text-sm">
+            <Link href="/signup" className="btn-outline-primary text-sm">
               Daftar Akun
             </Link>
           </div>
