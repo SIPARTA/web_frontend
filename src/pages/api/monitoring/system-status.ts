@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAuthenticatedUser } from "../../../lib/auth";
 
-const BACKEND_URL = process.env.NODE_ENV === "production" 
+const BACKEND_URL = process.env.NODE_ENV === "production"
   ? (process.env.NEXT_PUBLIC_DISEASE_API_URL || "https://siparta-backend.onrender.com")
   : (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
 
@@ -16,14 +16,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const now_iso = new Date().toISOString();
-  
+
   // Construct Gemini Status locally in Next.js
   const hasGeminiKey = !!process.env.GEMINI_API_KEY;
   const gemini_ai_info = {
-    name: "Google Gemini API (Safety Analysis)",
+    name: "Gemini AI (Safety Analysis)",
     api_status: hasGeminiKey ? "online" : "offline",
     backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
-    model_configured: "gemini-1.5-flash", 
+    model_configured: "gemini-1.5-flash",
     last_checked: now_iso,
     response_status: hasGeminiKey ? "ok" : "error",
     error_message: hasGeminiKey ? null : "GEMINI_API_KEY tidak ditemukan di environment variable frontend."
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         gemini_ai: gemini_ai_info,
         ai_jst: {
-          name: "SIPARTA ANN Sensor Classification",
+          name: "AI JST",
           version: null,
           deployment_status: "not_deployed",
           model_loaded: "unverified",
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error_message: `Gagal menghubungi backend: HTTP ${backendRes.status}`
         },
         dataset: {
-          name: "SIPARTA Real Sensor Dataset",
+          name: "SIPARTA Dataset",
           source: "Unknown",
           availability: "unverified",
           sample_count: null,
@@ -56,14 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
     }
-    
+
     const data = await backendRes.json();
     return res.status(200).json({
       gemini_ai: gemini_ai_info,
       ai_jst: data.ai_jst,
       dataset: data.dataset
     });
-    
+
   } catch (err: any) {
     console.error("[API/monitoring/system-status] Error:", err);
     return res.status(200).json({
