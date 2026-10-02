@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Construct Gemini Status locally in Next.js
   const hasGeminiKey = !!process.env.GEMINI_API_KEY;
   const gemini_ai_info = {
-    name: "Gemini AI (Safety Analysis)",
+    name: "Gemini AI",
     api_status: hasGeminiKey ? "online" : "offline",
     backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
     model_configured: "gemini-3.8-flash", 
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         gemini_ai: gemini_ai_info,
         ai_jst: {
-          name: "SIPARTA ANN Sensor Classification",
+          name: "AI JST",
           version: null,
           deployment_status: "not_deployed",
           model_loaded: "unverified",
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error_message: `Gagal menghubungi backend: HTTP ${backendRes.status}`
         },
         dataset: {
-          name: "SIPARTA Real Sensor Dataset",
+          name: "Sensor Dataset",
           source: "Unknown",
           availability: "unverified",
           sample_count: null,
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       gemini_ai: gemini_ai_info,
       ai_jst: {
-        name: "SIPARTA ANN Sensor Classification",
+        name: "AI JST",
         version: null,
         deployment_status: "not_deployed",
         model_loaded: "unverified",
@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error_message: "Network Error: Gagal menghubungi FastAPI Backend."
       },
       dataset: {
-        name: "SIPARTA Real Sensor Dataset",
+        name: "Sensor Dataset",
         source: "Unknown",
         availability: "unverified",
         sample_count: null,
