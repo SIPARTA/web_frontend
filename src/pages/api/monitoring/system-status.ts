@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     name: "Gemini AI (Safety Analysis)",
     api_status: hasGeminiKey ? "online" : "offline",
     backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
-    model_configured: "gemini-3.8-flash",
+    model_configured: "gemini-3.8-flash", 
     last_checked: now_iso,
     response_status: hasGeminiKey ? "ok" : "error",
     error_message: hasGeminiKey ? null : "GEMINI_API_KEY tidak ditemukan di environment variable frontend."
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         gemini_ai: gemini_ai_info,
         ai_jst: {
-          name: "AI JST",
+          name: "SIPARTA ANN Sensor Classification",
           version: null,
           deployment_status: "not_deployed",
           model_loaded: "unverified",
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error_message: `Gagal menghubungi backend: HTTP ${backendRes.status}`
         },
         dataset: {
-          name: "SIPARTA Dataset",
+          name: "SIPARTA Real Sensor Dataset",
           source: "Unknown",
           availability: "unverified",
           sample_count: null,
