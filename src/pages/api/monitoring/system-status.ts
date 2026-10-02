@@ -20,10 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Construct Gemini Status locally in Next.js
   const hasGeminiKey = !!process.env.GEMINI_API_KEY;
   const gemini_ai_info = {
-    name: "Gemini AI",
+    name: "Gemini AI (Safety Analysis)",
     api_status: hasGeminiKey ? "online" : "offline",
     backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
-    model_configured: "gemini-3.8-flash", 
+    model_configured: "gemini-2.5-flash",
     last_checked: now_iso,
     response_status: hasGeminiKey ? "ok" : "error",
     error_message: hasGeminiKey ? null : "GEMINI_API_KEY tidak ditemukan di environment variable frontend."
@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error_message: "Network Error: Gagal menghubungi FastAPI Backend."
       },
       dataset: {
-        name: "Sensor Dataset",
+        name: "SIPARTA Dataset",
         source: "Unknown",
         availability: "unverified",
         sample_count: null,
