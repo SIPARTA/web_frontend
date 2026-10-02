@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     name: "Gemini AI (Safety Analysis)",
     api_status: hasGeminiKey ? "online" : "offline",
     backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
-    model_configured: "gemini-1.5-flash",
+    model_configured: "gemini-3.8-flash",
     last_checked: now_iso,
     response_status: hasGeminiKey ? "ok" : "error",
     error_message: hasGeminiKey ? null : "GEMINI_API_KEY tidak ditemukan di environment variable frontend."
