@@ -70,10 +70,35 @@ interface GeminiSafetyResponse {
 }
 
 interface SystemStatus {
-  ai_jst: "online" | "offline";
-  gemini_ai: "online" | "offline";
-  iot_production: "online" | "offline";
-  droidcam_testing: "online" | "offline";
+  gemini_ai: {
+    name: string;
+    api_status: "online" | "offline" | "unverified";
+    backend_connectivity: "connected" | "disconnected" | "unverified";
+    model_configured: string | null;
+    last_checked: string;
+    response_status: string;
+    error_message: string | null;
+  };
+  ai_jst: {
+    name: string;
+    version: string | null;
+    deployment_status: "deployed" | "not_deployed" | "unverified";
+    model_loaded: "loaded" | "failed" | "unverified";
+    inference_readiness: "ready" | "not_ready" | "unverified";
+    last_checked: string;
+    error_message: string | null;
+  };
+  dataset: {
+    name: string;
+    source: string;
+    availability: "available" | "unavailable" | "unverified";
+    sample_count: number | null;
+    feature_count: number | null;
+    version_or_updated: string | null;
+    preprocessing_match: "matched" | "unmatched" | "unverified";
+    last_checked: string;
+    error_message: string | null;
+  };
 }
 
 
@@ -425,29 +450,74 @@ function UnsavedIncidentCard({ data, onSave }: { data: UnsavedData, onSave: (d: 
 function StatusPanel({ status }: { status: SystemStatus | null }) {
   if (!status) return null;
 
-  const items = [
-    { label: "AI JST Inference", key: "ai_jst", value: status.ai_jst },
-    { label: "Gemini AI (Safety)", key: "gemini_ai", value: status.gemini_ai },
-    { label: "IoT Production", key: "iot_production", value: status.iot_production },
-    { label: "DroidCam Testing", key: "droidcam_testing", value: status.droidcam_testing },
-  ];
-
   return (
     <section className="soft-panel mt-6 mb-6">
       <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--section-title)" }}>
-        Status Integrasi Sistem AI & Perangkat
+        Status Integrasi Sistem AI & Dataset
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map((item) => (
-          <div key={item.key} className="flex flex-col gap-1 rounded-md border p-3 text-xs" style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)" }}>
-            <div className="flex justify-between items-center font-semibold" style={{ color: "var(--text-default)" }}>
-              <span>{item.label}</span>
-              <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${item.value === 'online' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                {item.value === 'online' ? 'ONLINE' : 'OFFLINE'}
-              </span>
-            </div>
+      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-3">
+        {/* Card: Gemini AI */}
+        <div className="flex flex-col gap-2 rounded-md border p-4 text-xs" style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)" }}>
+          <div className="flex justify-between items-center font-semibold pb-2 border-b" style={{ borderColor: "var(--border-soft)", color: "var(--text-default)" }}>
+            <span>{status.gemini_ai.name}</span>
+            <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${status.gemini_ai.api_status === 'online' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              {status.gemini_ai.api_status === 'online' ? 'ONLINE' : 'OFFLINE'}
+            </span>
           </div>
-        ))}
+          <div className="flex flex-col gap-1 mt-1" style={{ color: "var(--muted)" }}>
+            <div className="flex justify-between"><span>Konektivitas Backend:</span> <span className="font-medium">{status.gemini_ai.backend_connectivity}</span></div>
+            <div className="flex justify-between"><span>Model:</span> <span className="font-medium">{status.gemini_ai.model_configured || "-"}</span></div>
+            <div className="flex justify-between"><span>Response Status:</span> <span className="font-medium">{status.gemini_ai.response_status}</span></div>
+            <div className="flex justify-between"><span>Last Checked:</span> <span className="font-medium">{formatTime(status.gemini_ai.last_checked)}</span></div>
+            {status.gemini_ai.error_message && (
+              <div className="mt-2 text-[10px] text-red-500 p-2 rounded bg-red-500/10 font-medium">
+                {status.gemini_ai.error_message}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card: AI JST */}
+        <div className="flex flex-col gap-2 rounded-md border p-4 text-xs" style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)" }}>
+          <div className="flex justify-between items-center font-semibold pb-2 border-b" style={{ borderColor: "var(--border-soft)", color: "var(--text-default)" }}>
+            <span>{status.ai_jst.name}</span>
+            <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${status.ai_jst.inference_readiness === 'ready' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              {status.ai_jst.inference_readiness === 'ready' ? 'READY' : 'ERROR'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 mt-1" style={{ color: "var(--muted)" }}>
+            <div className="flex justify-between"><span>Version:</span> <span className="font-medium">{status.ai_jst.version || "-"}</span></div>
+            <div className="flex justify-between"><span>Status Deployment:</span> <span className="font-medium">{status.ai_jst.deployment_status}</span></div>
+            <div className="flex justify-between"><span>Model Loaded:</span> <span className="font-medium">{status.ai_jst.model_loaded}</span></div>
+            <div className="flex justify-between"><span>Last Checked:</span> <span className="font-medium">{formatTime(status.ai_jst.last_checked)}</span></div>
+            {status.ai_jst.error_message && (
+              <div className="mt-2 text-[10px] text-red-500 p-2 rounded bg-red-500/10 font-medium">
+                {status.ai_jst.error_message}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card: Dataset */}
+        <div className="flex flex-col gap-2 rounded-md border p-4 text-xs" style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)" }}>
+          <div className="flex justify-between items-center font-semibold pb-2 border-b" style={{ borderColor: "var(--border-soft)", color: "var(--text-default)" }}>
+            <span>{status.dataset.name}</span>
+            <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${status.dataset.availability === 'available' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              {status.dataset.availability === 'available' ? 'AVAILABLE' : 'ERROR'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 mt-1" style={{ color: "var(--muted)" }}>
+            <div className="flex justify-between"><span>Source:</span> <span className="font-medium">{status.dataset.source}</span></div>
+            <div className="flex justify-between"><span>Samples / Features:</span> <span className="font-medium">{status.dataset.sample_count || 0} / {status.dataset.feature_count || 0}</span></div>
+            <div className="flex justify-between"><span>Preprocessing Match:</span> <span className="font-medium">{status.dataset.preprocessing_match}</span></div>
+            <div className="flex justify-between"><span>Last Checked:</span> <span className="font-medium">{formatTime(status.dataset.last_checked)}</span></div>
+            {status.dataset.error_message && (
+              <div className="mt-2 text-[10px] text-red-500 p-2 rounded bg-red-500/10 font-medium">
+                {status.dataset.error_message}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

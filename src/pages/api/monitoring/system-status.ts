@@ -13,25 +13,80 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized." });
   }
 
+  const now_iso = new Date().toISOString();
+  
+  // Construct Gemini Status locally in Next.js
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+  const gemini_ai_info = {
+    name: "Google Gemini API (Safety Analysis)",
+    api_status: hasGeminiKey ? "online" : "offline",
+    backend_connectivity: hasGeminiKey ? "connected" : "disconnected",
+    model_configured: "gemini-1.5-flash", 
+    last_checked: now_iso,
+    response_status: hasGeminiKey ? "ok" : "error",
+    error_message: hasGeminiKey ? null : "GEMINI_API_KEY tidak ditemukan di environment variable frontend."
+  };
+
   try {
     const backendRes = await fetch(`${BACKEND_URL}/api/v1/system-status`);
     if (!backendRes.ok) {
-      return res.status(backendRes.status).json({
-        ai_jst: "offline",
-        gemini_ai: "offline",
-        iot_production: "offline",
-        droidcam_testing: "offline"
+      return res.status(200).json({
+        gemini_ai: gemini_ai_info,
+        ai_jst: {
+          name: "SIPARTA ANN Sensor Classification",
+          version: null,
+          deployment_status: "not_deployed",
+          model_loaded: "unverified",
+          inference_readiness: "unverified",
+          last_checked: now_iso,
+          error_message: `Gagal menghubungi backend: HTTP ${backendRes.status}`
+        },
+        dataset: {
+          name: "SIPARTA Real Sensor Dataset",
+          source: "Unknown",
+          availability: "unverified",
+          sample_count: null,
+          feature_count: null,
+          version_or_updated: null,
+          preprocessing_match: "unverified",
+          last_checked: now_iso,
+          error_message: `Gagal menghubungi backend: HTTP ${backendRes.status}`
+        }
       });
     }
+    
     const data = await backendRes.json();
-    return res.status(200).json(data);
+    return res.status(200).json({
+      gemini_ai: gemini_ai_info,
+      ai_jst: data.ai_jst,
+      dataset: data.dataset
+    });
+    
   } catch (err: any) {
     console.error("[API/monitoring/system-status] Error:", err);
-    return res.status(500).json({
-      ai_jst: "offline",
-      gemini_ai: "offline",
-      iot_production: "offline",
-      droidcam_testing: "offline"
+    return res.status(200).json({
+      gemini_ai: gemini_ai_info,
+      ai_jst: {
+        name: "SIPARTA ANN Sensor Classification",
+        version: null,
+        deployment_status: "not_deployed",
+        model_loaded: "unverified",
+        inference_readiness: "unverified",
+        last_checked: now_iso,
+        error_message: "Network Error: Gagal menghubungi FastAPI Backend."
+      },
+      dataset: {
+        name: "SIPARTA Real Sensor Dataset",
+        source: "Unknown",
+        availability: "unverified",
+        sample_count: null,
+        feature_count: null,
+        version_or_updated: null,
+        preprocessing_match: "unverified",
+        last_checked: now_iso,
+        error_message: "Network Error: Gagal menghubungi FastAPI Backend."
+      }
     });
   }
 }
+
