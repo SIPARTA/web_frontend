@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Base query for transaction_logs
+    // Base query for transactions_logs
     let query = supabase
       .from("transaction_logs")
       .select(`
@@ -36,16 +36,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         audit_log_id,
         error_message,
         created_at,
-        retry_count
+        retry_count,
+        user_id
       `)
       .order("created_at", { ascending: false })
       .limit(100);
 
-    const { data, error } = await query;
+    // Apply DB level isolation if possible (requires 0007 migration)
+    if (userRole !== "admin") {
+       query = query.eq("user_id", userId);
+    }
+
+    let { data, error } = await query;
 
     if (error) {
-      console.error("[API/transactions] Supabase error:", error);
-      return res.status(500).json({ error: error.message });
+      console.warn("[API/transactions] Full query failed (possibly missing user_id column), attempting fallback:", error.message);
+      // Fallback without user_id equality filter and selection
+      const fallbackQuery = supabase
+        .from("transaction_logs")
+        .select(`
+          id,
+          tx_hash,
+          status,
+          audit_log_id,
+          error_message,
+          created_at,
+          retry_count
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100);
+        
+      const resFallback = await fallbackQuery;
+      
+      if (resFallback.error) {
+        console.error("[API/transactions] Supabase fallback error:", resFallback.error);
+        return res.status(500).json({ error: resFallback.error.message });
+      }
+      
+      data = resFallback.data;
+      error = null;
     }
 
     const enrichedData = await Promise.all(
@@ -103,12 +132,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     );
 
-    // Filter by ownership if not admin (and if an address is provided)
+    // Filter by ownership if not admin (in case DB level filtering threw 42703 column doesn't exist)
     let finalData = enrichedData;
-    if (userRole !== "admin" && address) {
-      finalData = enrichedData.filter(
-        tx => tx.ownerAddress && tx.ownerAddress.toLowerCase() === (address as string).toLowerCase()
-      );
+    if (userRole !== "admin") {
+      finalData = enrichedData.filter(tx => {
+         // If DB column filtering succeeded
+         if (tx.user_id !== undefined && tx.user_id == userId) return true;
+         // Fallback to JS filtering
+         return tx.ownerAddress && address && tx.ownerAddress.toLowerCase() === (address as string).toLowerCase();
+      });
     }
 
     return res.status(200).json(finalData);

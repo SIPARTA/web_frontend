@@ -27,7 +27,7 @@ export default async function handler(
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       systemInstruction: "Kamu adalah asisten keselamatan untuk SIPARTA, Sistem Pintar Deteksi Kimia Rumah Tangga. Jawab dalam bahasa Indonesia yang ringkas, praktis, dan mudah dipahami. Jangan melebih-lebihkan kemampuan sistem. Jika pengguna menyebut campuran berbahaya seperti pemutih dengan amonia atau cuka, beri peringatan jelas dan anjurkan ventilasi serta pemisahan bahan.",
     });
 

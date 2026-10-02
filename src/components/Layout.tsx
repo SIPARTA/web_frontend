@@ -10,11 +10,13 @@ const navItems = [
   { href: "/dataset", label: "Dataset & Sensor" },
   { href: "/transactions", label: "Transaksi" },
   { href: "/signin", label: "Masuk" },
+  { href: "/signup", label: "Daftar" },
+  { href: "/metamask", label: "MetaMask" },
 ];
 
 function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { authenticationStatus, user, logout } = useAuth();
+  const { authenticationStatus, user, logout, authMethod } = useAuth();
   const isAuthenticated = authenticationStatus === "authenticated";
 
   return (
@@ -40,12 +42,20 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           <nav className="flex items-center gap-1">
             {navItems.map((item) => {
-              // Hide login if already authenticated
-              if (isAuthenticated && item.href === "/signin") return null;
-              
               // Hide Monitoring and Transaksi for Guest (unauthenticated)
               if (!isAuthenticated && (item.href === "/monitoring" || item.href === "/transactions")) return null;
-              
+
+              // Hide Sign In and Sign Up when authenticated (any method)
+              if (isAuthenticated && (item.href === "/signin" || item.href === "/signup")) return null;
+
+              // MetaMask navigation logic
+              if (item.href === "/metamask") {
+                 if (isAuthenticated && (authMethod === "google" || authMethod === "email_password")) {
+                    return null; // Hide for Web2 users
+                 }
+                 // Show for Guest or MetaMask SIWE users
+              }
+
               const isActive = router.pathname === item.href;
               return (
                 <Link
@@ -63,15 +73,23 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            
+
             {isAuthenticated && (
               <div className="flex items-center gap-3 ml-4 border-l pl-4 border-[var(--border-soft)]">
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-semibold" style={{ color: "var(--section-title)" }}>
-                    {user?.role === "admin" ? "Admin" : "User"}
+                    {authMethod === "metamask_siwe" && user?.wallet_address 
+                      ? `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`
+                      : user?.name || user?.full_name || (user?.role === "admin" ? "Admin" : "User")}
                   </span>
                   <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                    {user?.wallet_address ? `${user.wallet_address.slice(0,6)}...${user.wallet_address.slice(-4)}` : ""}
+                    {authMethod === "google" 
+                        ? "Google Auth" 
+                        : authMethod === "email_password"
+                          ? "Email Auth"
+                          : authMethod === "metamask_siwe"
+                            ? "Polygon Amoy"
+                            : ""}
                   </span>
                 </div>
                 <button

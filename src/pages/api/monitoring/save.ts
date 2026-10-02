@@ -53,9 +53,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const payload: Record<string, unknown> = {
     incident_type,
     severity: severity.toUpperCase(),
-    sensor_data: sensors,
     timestamp,
     is_anchored: false,
+    user_id: user.id,
   };
 
   if (device_id) {

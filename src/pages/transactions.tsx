@@ -109,7 +109,22 @@ export default function TransactionsPage() {
         <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
           Fitur Transaksi membutuhkan autentikasi MetaMask. Silakan login terlebih dahulu untuk mengakses histori transaksi.
         </p>
-        <Link href="/signin" className="btn-primary">Login MetaMask</Link>
+        <Link href="/signin" className="btn-primary">Masuk ke SIPARTA</Link>
+      </div>
+    );
+  }
+
+  const isPremium = user?.wallet_address?.startsWith("0x");
+
+  if (!isPremium) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>Akun Standard (Web2)</h2>
+        <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
+          Fitur Transaksi Web3 dan log blockchain khusus untuk pengguna Premium yang terhubung dengan dompet kripto (MetaMask). 
+          Akun Google/Email Anda saat ini merupakan akun Standard.
+        </p>
+        <Link href="/metamask" className="btn-primary">Upgrade ke Premium / Hubungkan Wallet</Link>
       </div>
     );
   }

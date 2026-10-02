@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Cek apakah user ada, jika tidak buat baru dengan role default
+    // Cek apakah user ada
     const { data: user, error: findError } = await supabase
       .from("users")
       .select("*")
@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { error: updateError } = await supabase
       .from("users")
       .update({ nonce })
-      .eq("wallet_address", address);
+      .eq("id", targetUser.id);
       
     if (updateError) throw updateError;
 

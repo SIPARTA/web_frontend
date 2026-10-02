@@ -1,20 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from "react";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react";
+import { polygonAmoy } from "thirdweb/chains";
 
 type AuthState = {
   walletStatus: "connected" | "disconnected" | "initializing";
   authenticationStatus: "authenticated" | "unauthenticated" | "authenticating" | "initializing";
+  authMethod: "guest" | "google" | "email_password" | "metamask_siwe";
   databaseSyncStatus: "synchronized" | "unsynchronized" | "initializing";
   user: any | null;
   error: string | null;
   login: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithEmail: (e: string, p: string) => Promise<void>;
+  signUpWithEmail: (n: string, e: string, p: string) => Promise<void>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+import { supabase } from "../lib/supabaseClient";
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const account = useActiveAccount();
+  const activeChain = useActiveWalletChain();
+  const switchChain = useSwitchActiveWalletChain();
   const [walletStatus, setWalletStatus] = useState<"connected" | "disconnected" | "initializing">("initializing");
   const [authenticationStatus, setAuthenticationStatus] = useState<"authenticated" | "unauthenticated" | "authenticating" | "initializing">("initializing");
   const [databaseSyncStatus, setDatabaseSyncStatus] = useState<"synchronized" | "unsynchronized" | "initializing">("initializing");
@@ -42,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      await supabase.auth.signOut();
     } catch (e) {
       console.error("Logout failed:", e);
     }
@@ -75,14 +85,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       setError(null);
+
+      // Ensure chain is Polygon Amoy before signing
+      if (activeChain?.id !== polygonAmoy.id) {
+        try {
+          await switchChain(polygonAmoy);
+        } catch (switchErr) {
+          throw new Error("Gagal mengganti jaringan ke Polygon Amoy. Harap ganti secara manual di wallet Anda.");
+        }
+      }
       
       // 1. Dapatkan Nonce dari backend
       const nonceRes = await fetch(`/api/auth/nonce?address=${account.address}`);
       if (!nonceRes.ok) throw new Error("Gagal mendapatkan nonce dari server");
       const { nonce } = await nonceRes.json();
 
-      // 2. Minta Signature dari user (SIWE Message)
-      const message = `Welcome to SIPARTA!\n\nPlease sign this message to verify your identity.\n\nNonce: ${nonce}`;
+      // 2. Minta Signature dari user (SIWE Message - EIP-4361 compliant)
+      const domain = window.location.host;
+      const origin = window.location.origin;
+      const statement = 'Welcome to SIPARTA! Please sign this message to verify your identity.';
+      const issuedAt = new Date().toISOString();
+
+      const message = `${domain} wants you to sign in with your Ethereum account:\n${account.address}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nChain ID: ${polygonAmoy.id}\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
       
       // In v5 thirdweb, account object has signMessage
       let signature;
@@ -124,52 +148,164 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       isAuthenticating.current = false;
     }
-  }, [account]);
+  }, [account, activeChain, switchChain]);
 
-  const previousAddress = useRef<string | undefined>(undefined);
+  const loginWithGoogle = useCallback(async () => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      // Note: Supabase will redirect the page, so we don't need to do anything else here.
+    } catch (err: any) {
+      console.error("[AuthContext] Google Login Error:", err);
+      setError(err.message || "Gagal inisiasi Google Login");
+      setAuthenticationStatus("unauthenticated");
+      isAuthenticating.current = false;
+    }
+  }, []);
 
-  // Cek sesi yang ada di localStorage saat pertama kali load
+  const completeEmailSession = async (session: any) => {
+    // Send session to our unified backend to generate siparta JWT
+    const verifyRes = await fetch("/api/auth/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: session.access_token,
+      })
+    });
+
+    if (!verifyRes.ok) throw new Error("Gagal mapping sesi Email. Coba lagi.");
+    const data = await verifyRes.json();
+
+    if (data.success && data.user) {
+      localStorage.setItem("siparta_web3_user", JSON.stringify(data.user));
+      setUser(data.user);
+      setDatabaseSyncStatus("synchronized");
+      setAuthenticationStatus("authenticated");
+    } else {
+      throw new Error("Sesi tidak valid");
+    }
+  };
+
+  const loginWithEmail = useCallback(async (email: string, pass: string) => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    try {
+      setError(null);
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass
+      });
+      if (sbError) throw sbError;
+      if (data.session) {
+         await completeEmailSession(data.session);
+      }
+    } catch(err: any) {
+      console.warn("[AuthContext] Email Login Error:", err.message);
+      setError(err.message || "Gagal masuk. Periksa kembali email dan password.");
+      setAuthenticationStatus("unauthenticated");
+      setUser(null);
+    } finally {
+      isAuthenticating.current = false;
+    }
+  }, []);
+
+  const signUpWithEmail = useCallback(async (name: string, email: string, pass: string) => {
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+    setAuthenticationStatus("authenticating");
+    try {
+      setError(null);
+      const { data, error: sbError } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      });
+      if (sbError) throw sbError;
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+         setError("Akun dengan email ini sudah terdaftar. Silakan Sign In.");
+         setAuthenticationStatus("unauthenticated");
+      } else if (data.session) {
+         await completeEmailSession(data.session);
+      } else {
+         setError("Registrasi berhasil. Silakan periksa kotak masuk/spam email Anda untuk verifikasi.");
+         setAuthenticationStatus("unauthenticated");
+      }
+    } catch(err: any) {
+      console.warn("[AuthContext] Email SignUp Error:", err.message);
+      setError(err.message || "Gagal mendaftar. Coba gunakan email lain.");
+      setAuthenticationStatus("unauthenticated");
+      setUser(null);
+    } finally {
+      isAuthenticating.current = false;
+    }
+  }, []);
+
+  // 1. Initial auth restoration (run once on mount)
   useEffect(() => {
     const saved = localStorage.getItem("siparta_web3_user");
-    
-    if (account?.address) {
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.wallet_address === account.address) {
-            setUser(parsed);
-            setAuthenticationStatus("authenticated");
-            setDatabaseSyncStatus("synchronized");
-          } else {
-            // Address berubah, harus login ulang
-            logout();
-          }
-        } catch (e) {
-          logout();
-        }
-      } else {
-        // Connected to wallet but no session in localStorage
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setUser(parsed);
+        setAuthenticationStatus("authenticated");
+        setDatabaseSyncStatus("synchronized");
+      } catch (e) {
+        // Invalid session data
+        localStorage.removeItem("siparta_web3_user");
         setAuthenticationStatus("unauthenticated");
         setDatabaseSyncStatus("unsynchronized");
       }
-    } else if (account === undefined) {
-      // Thirdweb account might be undefined during initial hydration even if connected.
-      // If we previously had an address and now we don't, it's a genuine disconnect.
-      if (previousAddress.current !== undefined) {
-        logout();
-      } else if (!saved) {
-        // Only if there is absolutely no saved session, we confirm unauthenticated.
-        setAuthenticationStatus("unauthenticated");
-        setDatabaseSyncStatus("unsynchronized");
-      }
-      // If there IS a saved session and we never had an address yet, we wait (hydration).
+    } else {
+      // No saved session
+      setAuthenticationStatus("unauthenticated");
+      setDatabaseSyncStatus("unsynchronized");
     }
+  }, []);
 
-    previousAddress.current = account?.address;
-  }, [account?.address, logout]);
+  // 2. Handle account changes (only if user is already authenticated)
+  useEffect(() => {
+    if (account?.address && user) {
+      // Jika user murni login via MetaMask (wallet_address starts with 0x)
+      // dan address yang terhubung berubah, logout.
+      const isPureWeb3 = user.wallet_address?.startsWith("0x");
+      const isAddressMismatch = account.address !== user.wallet_address;
+
+      if (isAddressMismatch) {
+        if (isPureWeb3) {
+           console.log("[AuthContext] Wallet account changed. Logging out...");
+           logout();
+        }
+      }
+    }
+  }, [account?.address, user?.wallet_address, logout]);
+
+  let authMethod: "guest" | "google" | "email_password" | "metamask_siwe" = "guest";
+  if (authenticationStatus === "authenticated" && user) {
+    if (user.wallet_address?.startsWith("google:")) {
+      authMethod = "google";
+    } else if (user.wallet_address?.startsWith("email:")) {
+      authMethod = "email_password";
+    } else if (user.wallet_address?.startsWith("0x")) {
+      authMethod = "metamask_siwe";
+    }
+  }
 
   return (
-    <AuthContext.Provider value={{ walletStatus, authenticationStatus, databaseSyncStatus, user, error, login, logout }}>
+    <AuthContext.Provider value={{ walletStatus, authenticationStatus, authMethod, databaseSyncStatus, user, error, login, loginWithGoogle, loginWithEmail, signUpWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

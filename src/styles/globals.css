@@ -184,6 +184,7 @@ button, input, select, textarea { font: inherit; }
 .text-muted { color: var(--muted); }
 
 .btn-primary,
+.btn-outline-primary,
 .btn-accent,
 .btn-secondary {
   display: inline-flex;
@@ -205,6 +206,16 @@ button, input, select, textarea { font: inherit; }
 }
 
 .btn-primary:hover { background: #115e59; }
+
+.btn-outline-primary {
+  background: var(--surface);
+  border: 1px solid var(--btn-primary-from);
+  color: var(--btn-primary-from);
+}
+
+.btn-outline-primary:hover {
+  background: rgba(15, 118, 110, 0.05); /* very light teal background on hover */
+}
 
 .btn-accent {
   border: none;
