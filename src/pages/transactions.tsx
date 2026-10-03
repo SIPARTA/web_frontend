@@ -121,8 +121,8 @@ export default function TransactionsPage() {
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>TERKUNCI</h2>
         <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
-          Fitur Transaksi Web3 dan log blockchain khusus untuk pengguna Premium yang terhubung dengan dompet kripto (MetaMask).
-          Akun Google/Email Anda saat ini merupakan akun Standard.
+          Fitur Transaksi khusus pengguna yang terhubung dengan dompet kripto (MetaMask).
+          .
         </p>
         <Link href="/metamask" className="btn-primary">Hubungkan Wallet</Link>
       </div>
