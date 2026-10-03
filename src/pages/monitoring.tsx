@@ -546,12 +546,25 @@ function StatusPanel({ status }: { status: SystemStatus | null }) {
 
 // ─── Simulation Card ──────────────────────────────────────────────────────────
 
-function SimulationCard({ sample, index }: { sample: SimulationSample; index: number }) {
+function SimulationCard({
+  sample,
+  index,
+  onRequestAI,
+  aiResult,
+  aiLoading
+}: {
+  sample: SimulationSample;
+  index: number;
+  onRequestAI?: (sample: SimulationSample, idx: number) => void;
+  aiResult?: GeminiSafetyResponse | null;
+  aiLoading?: boolean;
+}) {
   const severity = sample.jst_status === "INFERENCE_FAILED" || sample.jst_status === "INFERENCE_UNAVAILABLE"
     ? sample.label_aktual?.toUpperCase()
     : sample.jst_realtime?.status || "AMAN";
   const cfg = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG["AMAN"];
   const sensors = sample.sensor_data ?? {};
+  const [showAI, setShowAI] = useState(false);
 
   return (
     <div className={`rounded-lg border p-4 transition-all ${cfg.cls} relative`}>
@@ -619,6 +632,90 @@ function SimulationCard({ sample, index }: { sample: SimulationSample; index: nu
           <p className="mt-1 text-[10px] text-red-500">{sample.jst_realtime.error}</p>
         )}
       </div>
+
+      {/* Gemini AI Safety Button & Panel */}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={() => {
+            if (!aiResult && onRequestAI) {
+              onRequestAI(sample, index);
+            }
+            setShowAI(!showAI);
+          }}
+          disabled={aiLoading}
+          className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] font-semibold transition-colors hover:bg-teal-500/10"
+          style={{ borderColor: "var(--border-soft)", color: "var(--teal-600, #0d9488)" }}
+        >
+          {aiLoading ? (
+            <><span className="animate-spin">⏳</span> Menganalisis...</>
+          ) : (
+            <><span>🤖</span> {showAI ? "Tutup Analisis AI" : "Analisis Keselamatan AI"}</>
+          )}
+        </button>
+      </div>
+
+      {/* AI Safety Response Panel */}
+      {showAI && aiResult && (
+        <div className="mt-3 rounded-lg border p-4 text-xs leading-relaxed space-y-3" style={{ backgroundColor: "var(--surface-soft)", borderColor: "var(--border-soft)" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🤖</span>
+            <span className="font-bold text-sm" style={{ color: "var(--section-title)" }}>Analisis Keselamatan AI (SIMULASI)</span>
+            <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ${aiResult.status_risiko === "BAHAYA" ? "bg-red-500/20 text-red-600" :
+              aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
+                "bg-green-500/20 text-green-600"
+              }`}>{aiResult.status_risiko}</span>
+          </div>
+
+          <div className="rounded-md p-2" style={{ background: "var(--bg-default)" }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>Gas Terdeteksi</p>
+            <p className="font-semibold" style={{ color: "var(--section-title)" }}>{aiResult.gas_terdeteksi}</p>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>Ringkasan Bahaya</p>
+            <p style={{ color: "var(--foreground)" }}>{aiResult.ringkasan_bahaya}</p>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-orange-500">⚡ Langkah Mitigasi Segera</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.langkah_mitigasi.map((step, i) => <li key={i}>{step}</li>)}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-blue-500">🩹 Pertolongan Pertama</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.pertolongan_pertama.map((step, i) => <li key={i}>{step}</li>)}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-red-500">🚫 Hal yang Harus Dihindari</p>
+            <ul className="list-disc list-inside space-y-1" style={{ color: "var(--foreground)" }}>
+              {aiResult.hal_dihindari.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-md p-2 border border-red-500/20 bg-red-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-red-500">🚪 Tinggalkan Area</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.kapan_tinggalkan_area}</p>
+            </div>
+            <div className="rounded-md p-2 border border-orange-500/20 bg-orange-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-orange-500">📞 Hubungi Darurat</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.kapan_hubungi_darurat}</p>
+            </div>
+          </div>
+
+          {aiResult.catatan_ketidakpastian && (
+            <div className="rounded-md p-2 border border-yellow-500/20 bg-yellow-500/5">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-yellow-600">⚠️ Catatan Ketidakpastian</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground)" }}>{aiResult.catatan_ketidakpastian}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -802,6 +899,8 @@ export default function MonitoringPage() {
   const [selectedScenario, setSelectedScenario] = useState("");
   const [simIntervalSec, setSimIntervalSec] = useState(5);
   const [simAiLoaded, setSimAiLoaded] = useState(false);
+  const [simAiResults, setSimAiResults] = useState<Record<string, GeminiSafetyResponse>>({});
+  const [simAiLoadingId, setSimAiLoadingId] = useState<string | null>(null);
   const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const router = useRouter();
@@ -843,6 +942,51 @@ export default function MonitoringPage() {
       }));
     } finally {
       setAiLoadingId(null);
+    }
+  };
+
+  // ─── Gemini AI Safety Analysis Handler for Simulation ──────────────────────
+  const handleRequestSimAI = async (sample: SimulationSample, idx: number) => {
+    const uniqueId = `sim-${idx}-${sample.bahan_uji}`;
+    if (simAiResults[uniqueId]) return;
+
+    setSimAiLoadingId(uniqueId);
+    
+    const severity = sample.jst_status === "INFERENCE_FAILED" || sample.jst_status === "INFERENCE_UNAVAILABLE"
+      ? sample.label_aktual?.toUpperCase()
+      : sample.jst_realtime?.status || "AMAN";
+      
+    try {
+      const res = await fetch("/api/monitoring/ai-safety", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          incident_id: uniqueId,
+          incident_type: `GAS_${sample.bahan_uji.replace(/\s+/g, '_').toUpperCase()}`,
+          severity: severity,
+          sensor_data: sample.sensor_data || {},
+          timestamp: new Date().toISOString(),
+          source_type: "simulation",
+        })
+      });
+      const data: GeminiSafetyResponse = await res.json();
+      setSimAiResults(prev => ({ ...prev, [uniqueId]: data }));
+    } catch (err: unknown) {
+      setSimAiResults(prev => ({
+        ...prev, [uniqueId]: {
+          gas_terdeteksi: "Gagal menganalisis (Simulasi)",
+          status_risiko: severity,
+          ringkasan_bahaya: `Gagal menghubungi layanan AI: ${err instanceof Error ? err.message : "Unknown error"}`,
+          langkah_mitigasi: ["Ikuti prosedur keselamatan umum setempat"],
+          pertolongan_pertama: ["Hubungi tenaga medis jika merasa terpapar"],
+          hal_dihindari: ["Jangan mendekati sumber kebocoran"],
+          kapan_tinggalkan_area: "Segera jika mencium bau tajam atau merasa tidak nyaman",
+          kapan_hubungi_darurat: "Hubungi 112/119 jika ada indikasi kebocoran gas",
+          catatan_ketidakpastian: "Layanan AI tidak dapat dihubungi. Gunakan protokol keselamatan standar.",
+        }
+      }));
+    } finally {
+      setSimAiLoadingId(null);
     }
   };
 
@@ -1204,7 +1348,14 @@ export default function MonitoringPage() {
                 return sev === filter;
               })
               .map((sample, i) => (
-                <SimulationCard key={`sim-${i}-${sample.bahan_uji}`} sample={sample} index={i} />
+                <SimulationCard
+                  key={`sim-${i}-${sample.bahan_uji}`}
+                  sample={sample}
+                  index={i}
+                  onRequestAI={handleRequestSimAI}
+                  aiResult={simAiResults[`sim-${i}-${sample.bahan_uji}`]}
+                  aiLoading={simAiLoadingId === `sim-${i}-${sample.bahan_uji}`}
+                />
               ))}
           </div>
         </>

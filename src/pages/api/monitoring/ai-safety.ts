@@ -83,9 +83,16 @@ Kembalikan HANYA JSON valid tanpa markdown code block, dengan struktur:
 function buildDetectionPrompt(data: SafetyRequest): string {
   const sensorInfo = data.sensor_data || {};
   
+  let sourceLabel = "IoT Hardware (Production)";
+  if (data.source_type === "droidcam") {
+    sourceLabel = "DroidCam (Development/Testing)";
+  } else if (data.source_type === "simulation") {
+    sourceLabel = "Data Simulasi (DEMO MODE)";
+  }
+  
   return `[SIPARTA DETECTION RECORD]
 ID Insiden: ${data.incident_id}
-Sumber: ${data.source_type === "droidcam" ? "DroidCam (Development/Testing)" : "IoT Hardware (Production)"}
+Sumber: ${sourceLabel}
 Jenis Insiden: ${data.incident_type}
 Status Klasifikasi: ${data.severity}
 Waktu Deteksi: ${data.timestamp}
@@ -96,6 +103,7 @@ Waktu Deteksi: ${data.timestamp}
 - MQ-2: Mengukur Asap, Propana, Hidrogen (H2)
 - MQ-135: Mengukur Amonia (NH3), Benzena, Hidrogen Sulfida (H2S), CO2
 *Catatan: Nilai di atas 2.0V mengindikasikan konsentrasi gas signifikan
+${data.source_type === "simulation" ? "\n*PERHATIAN: Ini adalah simulasi (DEMO MODE). Harap pastikan respons Anda tetap mengedukasi tanpa menyatakan ini adalah insiden fisik nyata, namun berikan analisis layaknya data ini nyata untuk pembelajaran.*" : ""}
 
 [DATA PEMBACAAN SENSOR AKTUAL (Tegangan Output ADC)]
 - MICS-5524: ${sensorInfo.mics5524 != null ? `${sensorInfo.mics5524} Volt` : "TIDAK TERSEDIA"}
