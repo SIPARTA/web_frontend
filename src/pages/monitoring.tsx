@@ -757,7 +757,7 @@ function SimulationPanel({
 
       {/* Disclaimer */}
       <div className="rounded-md border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-[10px]" style={{ color: "var(--muted)" }}>
-        <strong className="text-purple-600">DEMO MODE:</strong> Seluruh data di panel ini adalah simulasi dari dataset.
+        Seluruh data di panel ini adalah simulasi dari dataset.
       </div>
     </section>
   );
@@ -1194,10 +1194,6 @@ export default function MonitoringPage() {
       {/* Simulation History Cards */}
       {(dataSource === "simulation" || dataSource === "all") && simHistory.length > 0 && (
         <>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-purple-500">Riwayat Simulasi Demo ({simHistory.length})</span>
-            <div className="flex-1 border-t" style={{ borderColor: "var(--border-soft)" }} />
-          </div>
           <div className="grid gap-4 md:grid-cols-2">
             {simHistory
               .filter(s => {
