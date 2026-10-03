@@ -54,7 +54,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const router = useRouter();
 
   useEffect(() => {
@@ -85,12 +85,12 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     fetchTransactions();
-    
+
     // Auto refresh every 15 seconds
     const interval = setInterval(() => {
       fetchTransactions();
     }, 15000);
-    
+
     return () => clearInterval(interval);
   }, [fetchTransactions]);
 
@@ -121,10 +121,10 @@ export default function TransactionsPage() {
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold mb-4" style={{ color: "var(--section-title)" }}>Akun Standard (Web2)</h2>
         <p className="mb-6 text-sm text-center max-w-md" style={{ color: "var(--muted)" }}>
-          Fitur Transaksi Web3 dan log blockchain khusus untuk pengguna Premium yang terhubung dengan dompet kripto (MetaMask). 
+          Fitur Transaksi Web3 dan log blockchain khusus untuk pengguna Premium yang terhubung dengan dompet kripto (MetaMask).
           Akun Google/Email Anda saat ini merupakan akun Standard.
         </p>
-        <Link href="/metamask" className="btn-primary">Upgrade ke Premium / Hubungkan Wallet</Link>
+        <Link href="/metamask" className="btn-primary">Hubungkan Wallet</Link>
       </div>
     );
   }
@@ -182,9 +182,9 @@ export default function TransactionsPage() {
                     <td className="px-6 py-4">
                       {tx.tx_hash ? (
                         <div className="flex flex-col gap-1">
-                          <a 
-                            href={`https://amoy.polygonscan.com/tx/${tx.tx_hash}`} 
-                            target="_blank" 
+                          <a
+                            href={`https://amoy.polygonscan.com/tx/${tx.tx_hash}`}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="font-mono text-sm font-semibold hover:underline"
                             style={{ color: "var(--teal-600)" }}
