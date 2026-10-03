@@ -597,7 +597,7 @@ function SimulationCard({ sample, index }: { sample: SimulationSample; index: nu
       {/* JST Inference Result */}
       <div className="mt-3 rounded-md border p-2 text-xs" style={{ borderColor: "var(--border-soft)", background: "var(--surface-soft)" }}>
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>🧠 Inferensi JST Real-time</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>Inferensi JST Real-time</span>
           <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sample.jst_status === "INFERENCE_FAILED" ? "bg-red-500/20 text-red-600" :
             sample.jst_status === "INFERENCE_UNAVAILABLE" ? "bg-gray-500/20 text-gray-600" :
               sample.jst_realtime?.status === "BAHAYA" ? "bg-red-500/20 text-red-600" :
@@ -612,22 +612,13 @@ function SimulationCard({ sample, index }: { sample: SimulationSample; index: nu
         {sample.jst_status !== "INFERENCE_FAILED" && sample.jst_status !== "INFERENCE_UNAVAILABLE" && (
           <div className="mt-1 flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
             <span>Prediksi Dataset: {sample.prediksi_dataset}</span>
-            <span>Kecocokan: {sample.akurasi_sesuai === "True" ? "✅ Sesuai" : "❌ Tidak Sesuai"}</span>
+            <span>Kecocokan: {sample.akurasi_sesuai === "True" ? "Sesuai" : "Tidak Sesuai"}</span>
           </div>
         )}
         {sample.jst_realtime?.error && (
           <p className="mt-1 text-[10px] text-red-500">{sample.jst_realtime.error}</p>
         )}
       </div>
-
-      {/* Disclaimer */}
-      <p className="mt-2 text-[9px] italic" style={{ color: "var(--muted)" }}>
-        ⚠️ {sample.disclaimer}
-      </p>
-
-      <p className="mt-2 text-right text-[10px]" style={{ color: "var(--muted)" }}>
-        Demo #{index + 1} — {new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-      </p>
     </div>
   );
 }
@@ -659,11 +650,10 @@ function SimulationPanel({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🔬</span>
           <div>
-            <h2 className="text-sm font-bold" style={{ color: "var(--section-title)" }}>Simulasi Deteksi Gas — DEMO MODE</h2>
+            <h2 className="text-sm font-bold" style={{ color: "var(--section-title)" }}>Simulasi Deteksi Gas</h2>
             <p className="text-[10px]" style={{ color: "var(--muted)" }}>
-              Data berasal dari Dataset Sensor SIPARTA.csv, bukan pembacaan sensor real-time.
+              Data berasal dari Dataset Sensor SIPARTA.csv.
             </p>
           </div>
         </div>
@@ -682,7 +672,7 @@ function SimulationPanel({
           </span>
           {!aiModelLoaded && (
             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold text-red-500">
-              ⚠ JST Model Not Loaded
+              JST Model Not Loaded
             </span>
           )}
         </div>
@@ -727,22 +717,22 @@ function SimulationPanel({
         <div className="flex gap-2">
           {simState === "STOPPED" && (
             <button onClick={onStart} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-colors">
-              ▶ Mulai Simulasi
+              Mulai Simulasi
             </button>
           )}
           {simState === "RUNNING" && (
             <button onClick={onPause} className="rounded-md bg-yellow-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-yellow-700 transition-colors">
-              ⏸ Pause
+              Pause
             </button>
           )}
           {simState === "PAUSED" && (
             <button onClick={onStart} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-colors">
-              ▶ Lanjutkan
+              Lanjutkan
             </button>
           )}
           {simState !== "STOPPED" && (
             <button onClick={onStop} className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors">
-              ⏹ Stop
+              Stop
             </button>
           )}
           <button
@@ -759,7 +749,7 @@ function SimulationPanel({
               className="rounded-md border px-3 py-1.5 text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"
               style={{ borderColor: "var(--border-soft)" }}
             >
-              🗑️ Bersihkan ({simHistory.length})
+              Bersihkan ({simHistory.length})
             </button>
           )}
         </div>
@@ -767,9 +757,7 @@ function SimulationPanel({
 
       {/* Disclaimer */}
       <div className="rounded-md border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-[10px]" style={{ color: "var(--muted)" }}>
-        <strong className="text-purple-600">⚠️ DEMO MODE:</strong> Seluruh data di panel ini adalah simulasi dari dataset rekayasa.
-        Status perangkat IoT fisik <strong>tidak</strong> berubah karena simulasi ini.
-        Data simulasi <strong>tidak</strong> disimpan ke database insiden produksi.
+        <strong className="text-purple-600">DEMO MODE:</strong> Seluruh data di panel ini adalah simulasi dari dataset.
       </div>
     </section>
   );
