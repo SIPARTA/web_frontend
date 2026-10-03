@@ -148,21 +148,26 @@ const FALLBACK_RESPONSE = {
   status_risiko: "WASPADA",
   ringkasan_bahaya: "Data deteksi belum cukup untuk menentukan jenis/tingkat bahaya secara pasti.",
   langkah_mitigasi: [
-    "Pastikan ventilasi ruangan terbuka",
-    "Jauhi area yang dicurigai sebagai sumber gas",
-    "Ikuti prosedur keselamatan umum setempat",
+    "Segera menjauh dari area yang diduga terkontaminasi dan menuju lokasi aman.",
+    "Hindari menghirup gas atau uap yang tidak diketahui jenisnya.",
+    "Jangan memasuki kembali area berbahaya tanpa perlindungan dan pelatihan yang sesuai.",
+    "Jika terdapat korban, jangan melakukan penyelamatan yang dapat membahayakan diri sendiri.",
+    "Jika aman dilakukan, bantu korban menuju udara segar dan segera cari bantuan medis apabila mengalami gangguan pernapasan, pusing berat, penurunan kesadaran, atau gejala serius lainnya.",
+    "Hubungi petugas tanggap darurat atau pihak berwenang jika terdapat indikasi kebocoran atau bahaya kimia.",
+    "Jangan mencoba menghentikan kebocoran, mencampur bahan kimia, atau melakukan tindakan mitigasi teknis tanpa kompetensi dan perlindungan yang sesuai."
   ],
   pertolongan_pertama: [
-    "Jika merasa pusing/mual, segera ke area terbuka dengan udara segar",
-    "Hubungi tenaga medis jika gejala berlanjut",
+    "Pindahkan korban ke area dengan udara segar jika aman untuk dilakukan.",
+    "Segera cari bantuan medis jika korban mengalami gangguan pernapasan, pusing, atau mual."
   ],
   hal_dihindari: [
-    "Jangan menyalakan api/percikan di area yang dicurigai",
-    "Jangan mencoba memperbaiki sumber kebocoran sendiri",
+    "Jangan menyalakan api atau membuat percikan listrik di area kejadian.",
+    "Jangan menyentuh sumber kebocoran tanpa APD.",
+    "Jangan mencoba mencampur bahan kimia untuk menetralisir keadaan."
   ],
-  kapan_tinggalkan_area: "Segera tinggalkan area jika mencium bau tajam, merasa pusing, atau alarm berbunyi",
-  kapan_hubungi_darurat: "Hubungi 112/119/Damkar jika terdapat tanda kebocoran gas yang tidak terkendali",
-  catatan_ketidakpastian: "Layanan AI tidak tersedia saat ini. Rekomendasi ini berdasarkan protokol keselamatan umum. Selalu utamakan penilaian situasi aktual.",
+  kapan_tinggalkan_area: "Segera tinggalkan area jika mencium bau tajam, merasa pusing, atau alarm fisik berbunyi.",
+  kapan_hubungi_darurat: "Hubungi 112/119/Damkar jika terdapat tanda kebocoran bahan kimia atau gas yang tidak terkendali.",
+  catatan_ketidakpastian: "Peringatan: Prosedur umum ini BUKAN pengganti panduan khusus bahan kimia, lembar data keselamatan (SDS), petugas tanggap darurat, atau tenaga medis.",
 };
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -185,6 +190,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       ...FALLBACK_RESPONSE,
       catatan_ketidakpastian: "API Key Gemini belum dikonfigurasi. Rekomendasi ini berdasarkan protokol keselamatan umum.",
+    });
+  }
+
+  // Mencegah penggunaan token OAuth sebagai API key untuk Gemini
+  if (apiKey.startsWith("ya29.") || apiKey.startsWith("AQ.")) {
+    console.error("[AI-Safety] Kesalahan Kredensial: Ditemukan OAuth 2.0 Access Token, sedangkan SDK @google/generative-ai membutuhkan API Key dari Google AI Studio.");
+    return res.status(200).json({
+      ...FALLBACK_RESPONSE,
+      catatan_ketidakpastian: "Layanan AI tidak dapat diakses karena masalah autentikasi. Menggunakan prosedur keselamatan umum.",
     });
   }
 
@@ -236,12 +250,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
   } catch (error: unknown) {
-    console.error("[AI-Safety] Gemini API error:", error);
+    let userErrorMessage = "Layanan AI mengalami gangguan.";
+    
+    if (error instanceof Error) {
+      // Sembunyikan credential dari log
+      const safeLogMsg = error.message.replace(/key=([^&\s]+)/g, "key=***");
+      console.error("[AI-Safety] Gemini API error:", safeLogMsg);
+      
+      if (error.message.includes("401") || error.message.includes("invalid authentication credentials") || error.message.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED")) {
+        console.error("[AI-Safety] Authentication failure: API Key is invalid or not accepted.");
+        userErrorMessage = "Layanan AI tidak dapat diakses karena masalah autentikasi.";
+      } else if (error.message.includes("429") || error.message.includes("quota") || error.message.includes("rate limit")) {
+        userErrorMessage = "Layanan AI sedang sibuk (rate limit).";
+      } else if (error.message.includes("timeout") || error.message.includes("fetch failed") || error.message.includes("503")) {
+        userErrorMessage = "Layanan AI mengalami timeout atau tidak dapat dijangkau.";
+      }
+    } else {
+      console.error("[AI-Safety] Unknown Gemini API error:", error);
+    }
 
-    // Rate limit / timeout — return safe fallback
+    // Rate limit / timeout / auth error — return safe fallback
     return res.status(200).json({
       ...FALLBACK_RESPONSE,
-      catatan_ketidakpastian: `Layanan AI mengalami gangguan: ${error instanceof Error ? error.message : "Unknown error"}. Ikuti prosedur keselamatan umum.`,
+      catatan_ketidakpastian: `${userErrorMessage} Ikuti prosedur keselamatan umum.`,
     });
   }
 }
