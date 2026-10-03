@@ -5,7 +5,7 @@ const gases = [
   {
     name: "Karbon Monoksida",
     formula: "CO",
-    sources: "Kompor gas rusak, genset, kendaraan di garasi tertutup, kebakaran",
+    sources: "Asap Rokok",
     level: "Sangat berbahaya",
     levelClass: "risk-high",
     emoji: "🔴",
@@ -16,7 +16,7 @@ const gases = [
   {
     name: "Amonia",
     formula: "NH₃",
-    sources: "Cairan pembersih, pupuk, urin hewan peliharaan, bahan kimia rumah tangga",
+    sources: "Larutan Amonia",
     level: "Berbahaya pada konsentrasi tinggi",
     levelClass: "risk-medium",
     emoji: "🟠",
@@ -27,7 +27,7 @@ const gases = [
   {
     name: "Metana",
     formula: "CH₄",
-    sources: "Kebocoran gas alam (jaringan gas), pembusukan sampah organik",
+    sources: "Sampah organik busuk",
     level: "Mudah terbakar",
     levelClass: "risk-medium",
     emoji: "🟠",
@@ -49,7 +49,7 @@ const gases = [
   {
     name: "Isobutana",
     formula: "C₄H₁₀",
-    sources: "Korek gas, aerosol, sebagian campuran LPG",
+    sources: "Mancis korek api",
     level: "Mudah terbakar",
     levelClass: "risk-high",
     emoji: "🔴",
@@ -60,7 +60,7 @@ const gases = [
   {
     name: "Hidrogen",
     formula: "H₂",
-    sources: "Pengisian baterai, beberapa proses industri rumahan",
+    sources: "Larutan hidrogen peroksida",
     level: "Mudah terbakar",
     levelClass: "risk-medium",
     emoji: "🟠",
@@ -71,7 +71,7 @@ const gases = [
   {
     name: "Etanol",
     formula: "C₂H₅OH",
-    sources: "Hand sanitizer, parfum, alkohol medis, cairan pembersih",
+    sources: "Alkohol",
     level: "Mudah menguap dan mudah terbakar",
     levelClass: "risk-low",
     emoji: "🟡",
@@ -82,7 +82,7 @@ const gases = [
   {
     name: "Hidrogen Sulfida",
     formula: "H₂S",
-    sources: "Septic tank, saluran pembuangan, sampah organik membusuk",
+    sources: "Septic Tank",
     level: "Sangat berbahaya (sensitivitas silang)",
     levelClass: "risk-high",
     emoji: "🔴",
