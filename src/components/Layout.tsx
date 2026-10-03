@@ -20,10 +20,10 @@ function Layout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = authenticationStatus === "authenticated";
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-[72px]">
       <header
-        className="app-header sticky top-0 z-10 border-b"
-        style={{ borderColor: "var(--sidebar-border)" }}
+        className="app-header fixed top-0 w-full z-50 border-b"
+        style={{ borderColor: "var(--sidebar-border)", backgroundColor: "var(--surface)" }}
       >
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-4 px-5 md:px-8">
           <Link href="/" className="flex items-center gap-3">
