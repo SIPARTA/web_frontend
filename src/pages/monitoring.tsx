@@ -951,11 +951,11 @@ export default function MonitoringPage() {
     if (simAiResults[uniqueId]) return;
 
     setSimAiLoadingId(uniqueId);
-    
+
     const severity = sample.jst_status === "INFERENCE_FAILED" || sample.jst_status === "INFERENCE_UNAVAILABLE"
       ? sample.label_aktual?.toUpperCase()
       : sample.jst_realtime?.status || "AMAN";
-      
+
     try {
       const res = await fetch("/api/monitoring/ai-safety", {
         method: "POST",
@@ -1275,7 +1275,7 @@ export default function MonitoringPage() {
                 : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
                 }`}
             >
-              {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : s === "droidcam" ? "DroidCam (Testing)" : "🔬 Simulasi (Demo)"}
+              {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : s === "droidcam" ? "DroidCam (Testing)" : "Simulasi (Demo)"}
             </button>
           ))}
         </div>
