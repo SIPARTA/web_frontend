@@ -89,6 +89,16 @@ const gases = [
     detail:
       "Gas beracun berbau telur busuk pada konsentrasi rendah (<10 ppm), tetapi melumpuhkan indra penciuman pada >100 ppm. Konsentrasi >300 ppm dapat menyebabkan kematian dalam hitungan menit. Terdeteksi oleh sensitivitas silang sensor.",
     sensors: ["MQ-2", "MQ-135"],
+  }, {
+    name: "VOC Ringan",
+    formula: "VOC",
+    sources: "Minyak Rambut",
+    level: "Sangat berbahaya (sensitivitas silang)",
+    levelClass: "risk-high",
+    emoji: "🔴",
+    detail:
+      "Gas beracun berbau telur busuk pada konsentrasi rendah (<10 ppm), tetapi melumpuhkan indra penciuman pada >100 ppm. Konsentrasi >300 ppm dapat menyebabkan kematian dalam hitungan menit. Terdeteksi oleh sensitivitas silang sensor.",
+    sensors: ["MQ-135", "MICS-5524", "Figaro TGS2600"],
   },
 ];
 
