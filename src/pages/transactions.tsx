@@ -176,7 +176,7 @@ export default function TransactionsPage() {
                   <th className="px-6 py-4 font-semibold">Waktu Tercatat</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{ divideColor: "var(--border-soft)" }}>
+              <tbody className="divide-y" style={{ borderColor: "var(--border-soft)" }}>
                 {transactions.map((tx) => (
                   <tr key={tx.id} className="transition-colors hover:bg-[var(--surface-soft)]">
                     <td className="px-6 py-4">

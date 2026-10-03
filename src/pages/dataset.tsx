@@ -38,7 +38,7 @@ const gases = [
   {
     name: "Propana",
     formula: "C₃H₈",
-    sources: "Spritius",
+    sources: "Spiritus",
     level: "Mudah terbakar",
     levelClass: "risk-high",
     emoji: "🔴",

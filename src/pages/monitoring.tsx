@@ -8,7 +8,7 @@
  *   RPi → FastAPI → Supabase → Realtime WebSocket → Halaman ini
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
@@ -100,6 +100,29 @@ interface SystemStatus {
     error_message: string | null;
   };
 }
+
+// ─── Simulation Types ─────────────────────────────────────────────────────────
+
+interface SimulationSample {
+  source: "SIMULATION";
+  mode: "DEMO";
+  disclaimer: string;
+  sensor_data: SensorData;
+  bahan_uji: string;
+  label_aktual: string;
+  prediksi_dataset: string;
+  akurasi_sesuai: string;
+  jst_realtime: { status: string; confidence: number; error?: string };
+  jst_status: string;
+}
+
+interface SimulationScenario {
+  bahan_uji: string;
+  sample_count: number;
+  risk_distribution: Record<string, number>;
+}
+
+type SimulationState = "STOPPED" | "RUNNING" | "PAUSED";
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -330,8 +353,8 @@ function IncidentCard({ incident, onDelete, isDeleting, onRequestAI, aiResult, a
             <span className="text-sm">🤖</span>
             <span className="font-bold text-sm" style={{ color: "var(--section-title)" }}>Analisis Keselamatan AI</span>
             <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ${aiResult.status_risiko === "BAHAYA" ? "bg-red-500/20 text-red-600" :
-                aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
-                  "bg-green-500/20 text-green-600"
+              aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
+                "bg-green-500/20 text-green-600"
               }`}>{aiResult.status_risiko}</span>
           </div>
 
@@ -507,7 +530,6 @@ function StatusPanel({ status }: { status: SystemStatus | null }) {
           </div>
           <div className="flex flex-col gap-1 mt-1" style={{ color: "var(--muted)" }}>
             <div className="flex justify-between"><span>Source:</span> <span className="font-medium">{status.dataset.source}</span></div>
-            <div className="flex justify-between"><span>Samples / Features:</span> <span className="font-medium">{status.dataset.sample_count || 0} / {status.dataset.feature_count || 0}</span></div>
             <div className="flex justify-between"><span>Preprocessing Match:</span> <span className="font-medium">{status.dataset.preprocessing_match}</span></div>
             <div className="flex justify-between"><span>Last Checked:</span> <span className="font-medium">{formatTime(status.dataset.last_checked)}</span></div>
             {status.dataset.error_message && (
@@ -517,6 +539,237 @@ function StatusPanel({ status }: { status: SystemStatus | null }) {
             )}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Simulation Card ──────────────────────────────────────────────────────────
+
+function SimulationCard({ sample, index }: { sample: SimulationSample; index: number }) {
+  const severity = sample.jst_status === "INFERENCE_FAILED" || sample.jst_status === "INFERENCE_UNAVAILABLE"
+    ? sample.label_aktual?.toUpperCase()
+    : sample.jst_realtime?.status || "AMAN";
+  const cfg = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG["AMAN"];
+  const sensors = sample.sensor_data ?? {};
+
+  return (
+    <div className={`rounded-lg border p-4 transition-all ${cfg.cls} relative`}>
+      {/* SIMULATION badge */}
+      <div className="absolute top-2 right-2">
+        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-purple-600 animate-pulse">
+          SIMULATION
+        </span>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 pr-24">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${cfg.dotCls}`} />
+          <span className="text-sm font-extrabold" style={{ color: "var(--section-title)" }}>
+            {sample.bahan_uji}
+          </span>
+        </div>
+        <span className={cfg.badgeCls}>{cfg.label}</span>
+      </div>
+
+      {/* Source info */}
+      <div className="mt-2 text-[10px] flex flex-wrap gap-3" style={{ color: "var(--muted)" }}>
+        <span>Sumber: Dataset Sensor SIPARTA.csv</span>
+        <span>Label Dataset: {sample.label_aktual}</span>
+      </div>
+
+      {/* Sensor Values (ADC) */}
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        {Object.entries(SENSOR_LABELS).map(([key, label]) => {
+          const val = (sensors as Record<string, number>)[key];
+          return (
+            <div key={key} className="rounded-md p-2 text-center" style={{ background: "var(--surface-soft)" }}>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>{label}</p>
+              <p className="mt-1 font-mono text-xs font-bold" style={{ color: "var(--section-title)" }}>
+                {val != null ? Math.round(val) : "—"}
+              </p>
+              <p className="text-[8px]" style={{ color: "var(--muted)" }}>ADC</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* JST Inference Result */}
+      <div className="mt-3 rounded-md border p-2 text-xs" style={{ borderColor: "var(--border-soft)", background: "var(--surface-soft)" }}>
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>🧠 Inferensi JST Real-time</span>
+          <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sample.jst_status === "INFERENCE_FAILED" ? "bg-red-500/20 text-red-600" :
+            sample.jst_status === "INFERENCE_UNAVAILABLE" ? "bg-gray-500/20 text-gray-600" :
+              sample.jst_realtime?.status === "BAHAYA" ? "bg-red-500/20 text-red-600" :
+                sample.jst_realtime?.status === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
+                  "bg-green-500/20 text-green-600"
+            }`}>
+            {sample.jst_status === "INFERENCE_FAILED" ? "INFERENCE FAILED" :
+              sample.jst_status === "INFERENCE_UNAVAILABLE" ? "MODEL NOT LOADED" :
+                `${sample.jst_realtime?.status} (${sample.jst_realtime?.confidence}%)`}
+          </span>
+        </div>
+        {sample.jst_status !== "INFERENCE_FAILED" && sample.jst_status !== "INFERENCE_UNAVAILABLE" && (
+          <div className="mt-1 flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
+            <span>Prediksi Dataset: {sample.prediksi_dataset}</span>
+            <span>Kecocokan: {sample.akurasi_sesuai === "True" ? "✅ Sesuai" : "❌ Tidak Sesuai"}</span>
+          </div>
+        )}
+        {sample.jst_realtime?.error && (
+          <p className="mt-1 text-[10px] text-red-500">{sample.jst_realtime.error}</p>
+        )}
+      </div>
+
+      {/* Disclaimer */}
+      <p className="mt-2 text-[9px] italic" style={{ color: "var(--muted)" }}>
+        ⚠️ {sample.disclaimer}
+      </p>
+
+      <p className="mt-2 text-right text-[10px]" style={{ color: "var(--muted)" }}>
+        Demo #{index + 1} — {new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+      </p>
+    </div>
+  );
+}
+
+// ─── Simulation Control Panel ─────────────────────────────────────────────────
+
+function SimulationPanel({
+  simState, onStart, onPause, onStop, onSingleFetch,
+  scenarios, selectedScenario, onSelectScenario,
+  intervalSec, onSetInterval, simHistory, aiModelLoaded,
+  onClearHistory
+}: {
+  simState: SimulationState;
+  onStart: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  onSingleFetch: () => void;
+  scenarios: SimulationScenario[];
+  selectedScenario: string;
+  onSelectScenario: (s: string) => void;
+  intervalSec: number;
+  onSetInterval: (n: number) => void;
+  simHistory: SimulationSample[];
+  aiModelLoaded: boolean;
+  onClearHistory: () => void;
+}) {
+  return (
+    <section className="rounded-lg border-2 border-dashed border-purple-500/30 bg-purple-500/5 p-5 space-y-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🔬</span>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "var(--section-title)" }}>Simulasi Deteksi Gas — DEMO MODE</h2>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>
+              Data berasal dari Dataset Sensor SIPARTA.csv, bukan pembacaan sensor real-time.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider ${simState === "RUNNING" ? "bg-green-500/20 text-green-600 animate-pulse" :
+            simState === "PAUSED" ? "bg-yellow-500/20 text-yellow-600" :
+              "bg-gray-500/20 text-gray-500"
+            }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${simState === "RUNNING" ? "bg-green-500" :
+              simState === "PAUSED" ? "bg-yellow-500" :
+                "bg-gray-400"
+              }`} />
+            {simState === "RUNNING" ? "SIMULATION RUNNING" :
+              simState === "PAUSED" ? "SIMULATION PAUSED" :
+                "SIMULATION STOPPED"}
+          </span>
+          {!aiModelLoaded && (
+            <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold text-red-500">
+              ⚠ JST Model Not Loaded
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Controls Row */}
+      <div className="flex flex-wrap items-end gap-3">
+        {/* Scenario Selector */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>Skenario Gas</label>
+          <select
+            value={selectedScenario}
+            onChange={(e) => onSelectScenario(e.target.value)}
+            className="rounded-md border px-3 py-1.5 text-xs font-medium"
+            style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)", color: "var(--text-default)" }}
+          >
+            <option value="">Semua Bahan Uji (Acak)</option>
+            {scenarios.map(s => (
+              <option key={s.bahan_uji} value={s.bahan_uji}>
+                {s.bahan_uji} ({s.sample_count} sampel)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Interval */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>Interval (detik)</label>
+          <select
+            value={intervalSec}
+            onChange={(e) => onSetInterval(Number(e.target.value))}
+            className="rounded-md border px-3 py-1.5 text-xs font-medium"
+            style={{ borderColor: "var(--border-soft)", backgroundColor: "var(--bg-default)", color: "var(--text-default)" }}
+          >
+            {[3, 5, 8, 10, 15, 30].map(n => (
+              <option key={n} value={n}>{n}s</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {simState === "STOPPED" && (
+            <button onClick={onStart} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-colors">
+              ▶ Mulai Simulasi
+            </button>
+          )}
+          {simState === "RUNNING" && (
+            <button onClick={onPause} className="rounded-md bg-yellow-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-yellow-700 transition-colors">
+              ⏸ Pause
+            </button>
+          )}
+          {simState === "PAUSED" && (
+            <button onClick={onStart} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-colors">
+              ▶ Lanjutkan
+            </button>
+          )}
+          {simState !== "STOPPED" && (
+            <button onClick={onStop} className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors">
+              ⏹ Stop
+            </button>
+          )}
+          <button
+            onClick={onSingleFetch}
+            disabled={simState === "RUNNING"}
+            className="rounded-md border px-4 py-1.5 text-xs font-bold transition-colors hover:bg-purple-500/10 disabled:opacity-40"
+            style={{ borderColor: "var(--border-soft)", color: "var(--section-title)" }}
+          >
+            Ambil 1 Sampel
+          </button>
+          {simHistory.length > 0 && (
+            <button
+              onClick={onClearHistory}
+              className="rounded-md border px-3 py-1.5 text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"
+              style={{ borderColor: "var(--border-soft)" }}
+            >
+              🗑️ Bersihkan ({simHistory.length})
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="rounded-md border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-[10px]" style={{ color: "var(--muted)" }}>
+        <strong className="text-purple-600">⚠️ DEMO MODE:</strong> Seluruh data di panel ini adalah simulasi dari dataset rekayasa.
+        Status perangkat IoT fisik <strong>tidak</strong> berubah karena simulasi ini.
+        Data simulasi <strong>tidak</strong> disimpan ke database insiden produksi.
       </div>
     </section>
   );
@@ -546,13 +799,22 @@ export default function MonitoringPage() {
   const [connected, setConnected] = useState(false);
   const [devices, setDevices] = useState<{ id: string, name: string, is_active: boolean, last_seen: string | null, device_type: string }[]>([]);
   const [filter, setFilter] = useState<"ALL" | "BAHAYA" | "WASPADA" | "AMAN">("ALL");
-  const [dataSource, setDataSource] = useState<"all" | "iot" | "droidcam">("all");
+  const [dataSource, setDataSource] = useState<"all" | "iot" | "droidcam" | "simulation">("all");
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [unsavedData, setUnsavedData] = useState<UnsavedData[]>([]);
   const [aiResults, setAiResults] = useState<Record<string, GeminiSafetyResponse>>({});
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+
+  // ─── Simulation State ─────────────────────────────────────────────────────
+  const [simState, setSimState] = useState<SimulationState>("STOPPED");
+  const [simHistory, setSimHistory] = useState<SimulationSample[]>([]);
+  const [simScenarios, setSimScenarios] = useState<SimulationScenario[]>([]);
+  const [selectedScenario, setSelectedScenario] = useState("");
+  const [simIntervalSec, setSimIntervalSec] = useState(5);
+  const [simAiLoaded, setSimAiLoaded] = useState(false);
+  const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const router = useRouter();
 
@@ -595,6 +857,66 @@ export default function MonitoringPage() {
       setAiLoadingId(null);
     }
   };
+
+  // ─── Simulation Handlers ──────────────────────────────────────────────────
+
+  const fetchSimScenarios = useCallback(async () => {
+    try {
+      const res = await fetch("/api/monitoring/simulation?action=scenarios");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.scenarios) setSimScenarios(data.scenarios);
+    } catch { /* silent */ }
+  }, []);
+
+  const fetchSimSample = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ count: "1" });
+      if (selectedScenario) params.set("bahan", selectedScenario);
+      const res = await fetch(`/api/monitoring/simulation?${params.toString()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.ai_model_loaded !== undefined) setSimAiLoaded(data.ai_model_loaded);
+      if (data.results && data.results.length > 0) {
+        setSimHistory(prev => [data.results[0], ...prev].slice(0, 50));
+      }
+    } catch (err) {
+      console.error("Simulation fetch error:", err);
+    }
+  }, [selectedScenario]);
+
+  const startSimulation = useCallback(() => {
+    setSimState("RUNNING");
+    fetchSimSample();
+    if (simTimerRef.current) clearInterval(simTimerRef.current);
+    simTimerRef.current = setInterval(fetchSimSample, simIntervalSec * 1000);
+  }, [fetchSimSample, simIntervalSec]);
+
+  const pauseSimulation = useCallback(() => {
+    setSimState("PAUSED");
+    if (simTimerRef.current) { clearInterval(simTimerRef.current); simTimerRef.current = null; }
+  }, []);
+
+  const stopSimulation = useCallback(() => {
+    setSimState("STOPPED");
+    if (simTimerRef.current) { clearInterval(simTimerRef.current); simTimerRef.current = null; }
+  }, []);
+
+  // Reset interval when settings change and simulation is running
+  useEffect(() => {
+    if (simState === "RUNNING") {
+      if (simTimerRef.current) clearInterval(simTimerRef.current);
+      simTimerRef.current = setInterval(fetchSimSample, simIntervalSec * 1000);
+    }
+    return () => { if (simTimerRef.current) clearInterval(simTimerRef.current); };
+  }, [simIntervalSec, simState, fetchSimSample]);
+
+  // Load scenarios on mount
+  useEffect(() => {
+    if (authenticationStatus === "authenticated") {
+      fetchSimScenarios();
+    }
+  }, [authenticationStatus, fetchSimScenarios]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -812,16 +1134,16 @@ export default function MonitoringPage() {
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          {(["all", "iot", "droidcam"] as const).map((s) => (
+          {(["all", "iot", "droidcam", "simulation"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setDataSource(s)}
               className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${dataSource === s
-                ? "border-transparent bg-indigo-500/20 text-indigo-400"
+                ? s === "simulation" ? "border-transparent bg-purple-500/20 text-purple-500" : "border-transparent bg-indigo-500/20 text-indigo-400"
                 : "border-[var(--border-soft)] text-[var(--muted)] hover:border-[var(--muted)]"
                 }`}
             >
-              {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : "DroidCam (Testing)"}
+              {s === "all" ? "Semua Sumber" : s === "iot" ? "Alat IoT (Production)" : s === "droidcam" ? "DroidCam (Testing)" : "🔬 Simulasi (Demo)"}
             </button>
           ))}
         </div>
@@ -862,34 +1184,81 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="soft-panel py-12 text-center">
-          <p className="text-sm font-semibold" style={{ color: "var(--section-title)" }}>Belum ada insiden</p>
-          <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-            {filter === "ALL"
-              ? "Sistem menunggu laporan dari perangkat IoT."
-              : `Tidak ada insiden dengan status "${filter}".`}
-          </p>
-          <Link href="/" className="btn-secondary mt-6 inline-block text-sm">
-            Kembali ke Beranda
-          </Link>
-        </div>
+      {/* ─── Simulation Panel ──────────────────────────────────────────── */}
+      {(dataSource === "simulation" || dataSource === "all") && (
+        <SimulationPanel
+          simState={simState}
+          onStart={startSimulation}
+          onPause={pauseSimulation}
+          onStop={stopSimulation}
+          onSingleFetch={fetchSimSample}
+          scenarios={simScenarios}
+          selectedScenario={selectedScenario}
+          onSelectScenario={setSelectedScenario}
+          intervalSec={simIntervalSec}
+          onSetInterval={setSimIntervalSec}
+          simHistory={simHistory}
+          aiModelLoaded={simAiLoaded}
+          onClearHistory={() => setSimHistory([])}
+        />
       )}
 
-      {!loading && !error && filtered.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {filtered.map((incident) => (
-            <IncidentCard
-              key={incident.id}
-              incident={incident}
-              onDelete={authenticationStatus === "authenticated" ? handleDelete : undefined}
-              isDeleting={deletingId === incident.id}
-              onRequestAI={handleRequestAI}
-              aiResult={aiResults[incident.id] || null}
-              aiLoading={aiLoadingId === incident.id}
-            />
-          ))}
-        </div>
+      {/* Simulation History Cards */}
+      {(dataSource === "simulation" || dataSource === "all") && simHistory.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-purple-500">Riwayat Simulasi Demo ({simHistory.length})</span>
+            <div className="flex-1 border-t" style={{ borderColor: "var(--border-soft)" }} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {simHistory
+              .filter(s => {
+                if (filter === "ALL") return true;
+                const sev = s.jst_status === "INFERENCE_FAILED" || s.jst_status === "INFERENCE_UNAVAILABLE"
+                  ? s.label_aktual?.toUpperCase()
+                  : s.jst_realtime?.status || "";
+                return sev === filter;
+              })
+              .map((sample, i) => (
+                <SimulationCard key={`sim-${i}-${sample.bahan_uji}`} sample={sample} index={i} />
+              ))}
+          </div>
+        </>
+      )}
+
+      {/* ─── Production Incident List ──────────────────────────────────── */}
+      {dataSource !== "simulation" && (
+        <>
+          {!loading && !error && filtered.length === 0 && (
+            <div className="soft-panel py-12 text-center">
+              <p className="text-sm font-semibold" style={{ color: "var(--section-title)" }}>Belum ada insiden</p>
+              <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
+                {filter === "ALL"
+                  ? "Sistem menunggu laporan dari perangkat IoT."
+                  : `Tidak ada insiden dengan status "${filter}".`}
+              </p>
+              <Link href="/" className="btn-secondary mt-6 inline-block text-sm">
+                Kembali ke Beranda
+              </Link>
+            </div>
+          )}
+
+          {!loading && !error && filtered.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filtered.map((incident) => (
+                <IncidentCard
+                  key={incident.id}
+                  incident={incident}
+                  onDelete={authenticationStatus === "authenticated" ? handleDelete : undefined}
+                  isDeleting={deletingId === incident.id}
+                  onRequestAI={handleRequestAI}
+                  aiResult={aiResults[incident.id] || null}
+                  aiLoading={aiLoadingId === incident.id}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
