@@ -21,7 +21,7 @@ const gases = [
     levelClass: "risk-medium",
     emoji: "🟠",
     detail:
-      "Gas alkalin yang korosif terhadap saluran pernapasan. Bau menyengat pada >25 ppm. Paparan >300 ppm dapat menyebabkan edema paru. Sangat berbahaya jika dicampur dengan pemutih (menghasilkan kloramin).",
+      "Gas alkalin yang korosif terhadap saluran pernapasan. Bau menyengat pada >25 ppm. Paparan >300 ppm dapat menyebabkan edema paru.",
     sensors: ["MQ-135"],
   },
   {
@@ -32,40 +32,40 @@ const gases = [
     levelClass: "risk-medium",
     emoji: "🟠",
     detail:
-      "Komponen utama gas alam. Tidak beracun secara langsung, tetapi sangat mudah terbakar dan meledak pada konsentrasi 5–15% di udara (LEL–UEL). Pada konsentrasi tinggi dapat menyebabkan asfiksia.",
+      "Komponen utama gas alam yang dihasilkan dari pembusukan anaerob. Tidak beracun secara langsung, tetapi sangat mudah terbakar dan meledak pada konsentrasi 5–15% di udara (LEL–UEL).",
     sensors: ["MICS-5524", "MQ-2", "Figaro TGS2600"],
   },
   {
     name: "Propana",
     formula: "C₃H₈",
-    sources: "Tabung LPG",
-    level: "Mudah terbakar dan dapat menyebabkan ledakan",
+    sources: "Spritius",
+    level: "Mudah terbakar",
     levelClass: "risk-high",
     emoji: "🔴",
     detail:
-      "Komponen utama LPG yang lebih berat dari udara sehingga terakumulasi di lantai. LEL 2.1%, UEL 9.5%. Kebocoran kecil pun dapat mengisi ruangan tertutup dan menyulut ledakan dari percikan kecil.",
+      "Uap dari spiritus sangat mudah terbakar. Meskipun spiritus bukan gas propana murni, uap alkoholnya terdeteksi kuat sebagai propana oleh sensor oksida logam (seperti MQ-2) akibat efek sensitivitas silang.",
     sensors: ["MICS-5524", "MQ-2", "Figaro TGS2600"],
   },
   {
     name: "Isobutana",
     formula: "C₄H₁₀",
-    sources: "Mancis korek api",
+    sources: "Mancis (Korek Api Gas)",
     level: "Mudah terbakar",
     levelClass: "risk-high",
     emoji: "🔴",
     detail:
-      "Lebih berat dari propana dan terakumulasi lebih cepat di area rendah. LEL 1.8%. Sering ditemukan dalam aerosol rumah tangga dan korek gas portabel. Paparan inhalasi berlebih dapat menyebabkan aritmia jantung.",
+      "Lebih berat dari propana dan terakumulasi lebih cepat di area rendah. Sering ditemukan dalam produk aerosol dan korek gas portabel. Paparan inhalasi berlebih dapat mendepresi sistem saraf pusat.",
     sensors: ["MICS-5524", "MQ-2"],
   },
   {
     name: "Hidrogen",
     formula: "H₂",
-    sources: "Larutan hidrogen peroksida",
-    level: "Mudah terbakar",
+    sources: "Larutan Hidrogen peroksida",
+    level: "Sangat mudah terbakar",
     levelClass: "risk-medium",
     emoji: "🟠",
     detail:
-      "Gas paling ringan yang mudah menyebar ke atas. Sangat mudah terbakar dengan rentang LEL–UEL 4–75%. Nyala api hidrogen hampir tidak terlihat. Dihasilkan saat pengisian baterai aki (charging lead-acid batteries).",
+      "Larutan Hidrogen Peroksida (H₂O₂) secara kimiawi terurai menjadi air dan uap oksigen reaktif. Meskipun bukan gas hidrogen (H₂) murni, uap oksidator kuat ini dapat memicu fluktuasi pembacaan pada sensor oksida logam (seperti MQ-2) akibat efek sensitivitas silang.",
     sensors: ["MICS-5524", "MQ-2", "Figaro TGS2600"],
   },
   {
@@ -76,28 +76,29 @@ const gases = [
     levelClass: "risk-low",
     emoji: "🟡",
     detail:
-      "Uap etanol mudah terbakar pada konsentrasi >3.3% (LEL). Flash point rendah (13°C). Banyak terdapat di produk rumah tangga. Sensor dapat mendeteksi akumulasi uap di ruangan tertutup terutama saat hand sanitizer digunakan berlebihan.",
+      "Uap etanol mudah terbakar pada konsentrasi >3.3% (LEL). Flash point rendah (13°C). Sensor dapat mendeteksi akumulasi uap ini di ruangan tertutup terutama saat hand sanitizer atau disinfektan digunakan dalam jumlah besar.",
     sensors: ["MICS-5524", "MQ-2", "MQ-135", "Figaro TGS2600"],
   },
   {
     name: "Hidrogen Sulfida",
     formula: "H₂S",
     sources: "Septic Tank",
-    level: "Sangat berbahaya (sensitivitas silang)",
+    level: "Sangat berbahaya",
     levelClass: "risk-high",
     emoji: "🔴",
     detail:
-      "Gas beracun berbau telur busuk pada konsentrasi rendah (<10 ppm), tetapi melumpuhkan indra penciuman pada >100 ppm. Konsentrasi >300 ppm dapat menyebabkan kematian dalam hitungan menit. Terdeteksi oleh sensitivitas silang sensor.",
+      "Gas beracun berbau telur busuk yang dihasilkan dari dekomposisi feses/bakteri. Di atas 100 ppm, ia dapat melumpuhkan indra penciuman sehingga kebocoran tidak lagi disadari. >300 ppm mengancam nyawa dengan cepat.",
     sensors: ["MQ-2", "MQ-135"],
-  }, {
+  },
+  {
     name: "Senyawa Organik Volatil (VOC Ringan)",
     formula: "VOCs",
-    sources: "Hairspray, minyak rambut, cat, parfum, produk pembersih",
+    sources: "Minyak Rambut",
     level: "Berbahaya pada paparan tinggi/kronis",
     levelClass: "risk-medium",
     emoji: "🟠",
     detail:
-      "Senyawa organik yang mudah menguap pada suhu ruang. Paparan uap VOC berlebih dalam ruangan tertutup (seperti dari kosmetik/minyak rambut) dapat memicu pusing, iritasi saluran pernapasan, mual, hingga dampak jangka panjang pada sistem saraf.",
+      "Senyawa organik yang sangat mudah menguap pada suhu kamar. Terakumulasi dari produk kosmetik/pembersih ruangan. Paparan uap berlebih memicu pusing, iritasi, hingga dampak neurologis jangka panjang.",
     sensors: ["MQ-135", "MICS-5524", "Figaro TGS2600"],
   },
 ];
