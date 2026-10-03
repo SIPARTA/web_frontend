@@ -329,11 +329,10 @@ function IncidentCard({ incident, onDelete, isDeleting, onRequestAI, aiResult, a
           <div className="flex items-center gap-2">
             <span className="text-sm">🤖</span>
             <span className="font-bold text-sm" style={{ color: "var(--section-title)" }}>Analisis Keselamatan AI</span>
-            <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ${
-              aiResult.status_risiko === "BAHAYA" ? "bg-red-500/20 text-red-600" :
-              aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
-              "bg-green-500/20 text-green-600"
-            }`}>{aiResult.status_risiko}</span>
+            <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ${aiResult.status_risiko === "BAHAYA" ? "bg-red-500/20 text-red-600" :
+                aiResult.status_risiko === "WASPADA" ? "bg-yellow-500/20 text-yellow-600" :
+                  "bg-green-500/20 text-green-600"
+              }`}>{aiResult.status_risiko}</span>
           </div>
 
           <div className="rounded-md p-2" style={{ background: "var(--bg-default)" }}>
@@ -551,7 +550,7 @@ export default function MonitoringPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [unsavedData, setUnsavedData] = useState<UnsavedData[]>([]);
-  const [aiResults, setAiResults] = useState<Record<string, GeminiSafetyResponse>>({}); 
+  const [aiResults, setAiResults] = useState<Record<string, GeminiSafetyResponse>>({});
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
 
@@ -561,7 +560,7 @@ export default function MonitoringPage() {
   const handleRequestAI = async (incident: IncidentEvent) => {
     // Jangan re-request jika sudah ada hasil
     if (aiResults[incident.id]) return;
-    
+
     setAiLoadingId(incident.id);
     try {
       const res = await fetch("/api/monitoring/ai-safety", {
@@ -579,17 +578,19 @@ export default function MonitoringPage() {
       const data: GeminiSafetyResponse = await res.json();
       setAiResults(prev => ({ ...prev, [incident.id]: data }));
     } catch (err: unknown) {
-      setAiResults(prev => ({ ...prev, [incident.id]: {
-        gas_terdeteksi: "Gagal menganalisis",
-        status_risiko: incident.severity,
-        ringkasan_bahaya: `Gagal menghubungi layanan AI: ${err instanceof Error ? err.message : "Unknown error"}`,
-        langkah_mitigasi: ["Ikuti prosedur keselamatan umum setempat"],
-        pertolongan_pertama: ["Hubungi tenaga medis jika merasa terpapar"],
-        hal_dihindari: ["Jangan mendekati sumber kebocoran"],
-        kapan_tinggalkan_area: "Segera jika mencium bau tajam atau merasa tidak nyaman",
-        kapan_hubungi_darurat: "Hubungi 112/119 jika ada indikasi kebocoran gas",
-        catatan_ketidakpastian: "Layanan AI tidak dapat dihubungi. Gunakan protokol keselamatan standar.",
-      }}));
+      setAiResults(prev => ({
+        ...prev, [incident.id]: {
+          gas_terdeteksi: "Gagal menganalisis",
+          status_risiko: incident.severity,
+          ringkasan_bahaya: `Gagal menghubungi layanan AI: ${err instanceof Error ? err.message : "Unknown error"}`,
+          langkah_mitigasi: ["Ikuti prosedur keselamatan umum setempat"],
+          pertolongan_pertama: ["Hubungi tenaga medis jika merasa terpapar"],
+          hal_dihindari: ["Jangan mendekati sumber kebocoran"],
+          kapan_tinggalkan_area: "Segera jika mencium bau tajam atau merasa tidak nyaman",
+          kapan_hubungi_darurat: "Hubungi 112/119 jika ada indikasi kebocoran gas",
+          catatan_ketidakpastian: "Layanan AI tidak dapat dihubungi. Gunakan protokol keselamatan standar.",
+        }
+      }));
     } finally {
       setAiLoadingId(null);
     }
@@ -687,7 +688,7 @@ export default function MonitoringPage() {
         setDevices([]);
       }
     };
-    
+
     // Fungsi untuk cek system status
     const checkSystemStatus = async () => {
       try {
@@ -767,7 +768,7 @@ export default function MonitoringPage() {
 
       {/* Stats */}
       <StatsBar incidents={incidents} />
-      
+
       {/* System Status Panel */}
       <StatusPanel status={systemStatus} />
 
